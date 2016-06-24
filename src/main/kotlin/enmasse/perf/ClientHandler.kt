@@ -29,7 +29,6 @@ open class ClientHandler(val runtime: Int) : BaseHandler(), Runnable {
 
     override fun onReactorInit(e: Event) {
         startTime = System.currentTimeMillis()
-        println("Scheduling reactor to shutdown in ${runtime} seconds")
         reactor.schedule(TimeUnit.SECONDS.toMillis(runtime.toLong()).toInt(), this)
     }
 
