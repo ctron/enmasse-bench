@@ -30,7 +30,7 @@ fun main(args: Array<String>) {
         val port = Integer.parseInt(cmd.getOptionValue("p"))
         val address = cmd.getOptionValue("a")
         val msgSize = Integer.parseInt(cmd.getOptionValue("s"))
-        val runLength = java.lang.Long.parseLong(cmd.getOptionValue("r"))
+        val runLength = Integer.parseInt(cmd.getOptionValue("r"))
 
         runBenchmark(clients, hostname, port, address, msgSize, runLength)
     } catch (e: ParseException) {
@@ -49,18 +49,16 @@ fun createRequiredOption(name: String, longName: String, desc: String): Option {
             .build()
 }
 
-fun runBenchmark(clients: Int, hostname: String, port: Int, address: String, msgSize: Int, runLength: Long) {
+fun runBenchmark(clients: Int, hostname: String, port: Int, address: String, msgSize: Int, runLength: Int) {
     val clients = 1.rangeTo(clients).map { i ->
-        println("Creating client with id ${i}")
-        val client = Client(hostname, port, address, msgSize, runLength)
-        client
+        Client(hostname, port, address, msgSize, runLength)
     }
 
     val executor = Executors.newFixedThreadPool(clients.size)
     clients.forEach{c -> executor.execute(c)}
     executor.shutdown()
-    executor.awaitTermination(runLength + 10, TimeUnit.SECONDS)
+    executor.awaitTermination(runLength + 10L, TimeUnit.SECONDS)
 
-    val results = clients.map(Client::result).foldRight(Result(0, runLength), {a, b -> Result(a.numMessages + b.numMessages, a.runTime)})
-    println("Sent and received ${results.numMessages} in ${results.runTime} seconds. Throughput: ${results.throughput()}")
+    val results = clients.map(Client::result).foldRight(Result(0, 0), {a, b -> Result(a.numMessages + b.numMessages, Math.max(a.runTime, b.runTime)) })
+    println("Sent and received ${results.numMessages} in ${results.runTime / 1000} seconds. Throughput: ${results.throughput()}")
 }

@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
 /**
  * @author lulf
  */
-class Sender(val hostname:String, val port: Int, val address: String, val msgSize: Int): ClientHandler() {
+class Sender(val hostname:String, val port: Int, val address: String, val msgSize: Int, runTime: Int): ClientHandler(runTime) {
 
     var nextTag = 0
     var msgsSent = 0
@@ -26,11 +26,11 @@ class Sender(val hostname:String, val port: Int, val address: String, val msgSiz
     }
 
     override fun onReactorInit(event: Event) {
+        super.onReactorInit(event)
         event.reactor.connectionToHost(hostname, port, this)
     }
 
     override fun onConnectionInit(event: Event) {
-        println("Connection init sender")
         val conn = event.connection
         conn.container = "enmasse-bench1"
         val session = conn.session()
