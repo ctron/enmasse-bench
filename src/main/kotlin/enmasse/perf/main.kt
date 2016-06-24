@@ -1,6 +1,9 @@
 package enmasse.perf
 
 import org.apache.commons.cli.*
+import java.util.concurrent.CompletionService
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /**
  * This is a benchmarking tool designed to find the limits of an EnMasse cluster by doing request-response. The
@@ -54,5 +57,7 @@ fun runBenchmark(clients: Int, hostname: String, port: Int, address: String, msg
         client
     }
 
-    clients.forEach(Client::run)
+    val executor = Executors.newFixedThreadPool(clients.size)
+    clients.forEach{c -> executor.execute(c)}
+    executor.shutdown()
 }

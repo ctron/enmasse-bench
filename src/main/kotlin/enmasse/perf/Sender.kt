@@ -46,7 +46,9 @@ class Sender(val hostname:String, val port: Int, val address: String, val msgSiz
     }
 
     override fun onDelivery(e: Event) {
-        e.delivery.settle()
+        if (e.delivery.remotelySettled()) {
+            e.delivery.settle()
+        }
     }
 
     override fun onLinkFlow(e: Event) {
@@ -64,6 +66,6 @@ class Sender(val hostname:String, val port: Int, val address: String, val msgSiz
     }
 
     override fun onTransportError(e: Event) {
-        println("Error during transport: ${e.transport.condition.description}")
+        println("Transport: ${e.transport.condition.description}")
     }
 }

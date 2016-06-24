@@ -26,7 +26,7 @@ open class ClientHandler : BaseHandler(), Runnable {
         try {
             reactor.run()
         } catch (e: Exception) {
-            println("Stopping client: ${e.message}: ${e.printStackTrace()}")
+            println("Client stopped") //: ${e.message}: ${e.printStackTrace()}")
         }
     }
 

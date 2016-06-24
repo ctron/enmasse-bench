@@ -5,12 +5,12 @@ import java.util.concurrent.TimeUnit
 /**
  * @author lulf
  */
-class Client(hostname:String, port:Int, address:String, msgSize: Int, val runLength: Long)
+class Client(hostname:String, port:Int, address:String, msgSize: Int, val runLength: Long): Runnable
 {
     val sendHandler = Sender(hostname, port, address, msgSize)
     val recvHandler = Receiver(hostname, port, address, msgSize)
 
-    fun run() {
+    override fun run() {
         recvHandler.start()
         sendHandler.start()
         Thread.sleep(TimeUnit.SECONDS.toMillis(runLength))

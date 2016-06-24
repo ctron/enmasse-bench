@@ -38,7 +38,7 @@ class Receiver(val hostname: String, val port: Int, val address: String, msgSize
     }
 
     override fun onTransportError(e: Event) {
-        println("Error during transport: ${e.transport.condition.description}")
+        println("Transport: ${e.transport.condition.description}")
     }
 
     override fun onDelivery(event: Event) {
