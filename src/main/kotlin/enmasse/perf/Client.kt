@@ -9,14 +9,27 @@ class Client(hostname:String, port:Int, address:String, msgSize: Int, val runLen
 {
     val sendHandler = Sender(hostname, port, address, msgSize)
     val recvHandler = Receiver(hostname, port, address, msgSize)
+    var runTime = 0L
 
     override fun run() {
+        val start = System.currentTimeMillis()
         recvHandler.start()
         sendHandler.start()
         Thread.sleep(TimeUnit.SECONDS.toMillis(runLength))
         sendHandler.stop()
         recvHandler.stop()
-        println("Received ${recvHandler.msgsReceived} messages in ${runLength} seconds (${recvHandler.msgsReceived / runLength} msg/s)")
-        println("Sent ${sendHandler.msgsSent} messages in ${runLength} seconds (${sendHandler.msgsSent / runLength} msg/s)")
+        val end = System.currentTimeMillis()
+        runTime = (end - start) / 1000
+        println("Runtime was ${runTime} seconds")
+    }
+
+    fun result(): Result {
+        return Result(recvHandler.msgsReceived, runTime)
+    }
+}
+
+data class Result(val numMessages: Long, val runTime: Long) {
+    fun throughput(): Long {
+        return numMessages / runTime
     }
 }

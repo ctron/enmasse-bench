@@ -11,7 +11,7 @@ import org.apache.qpid.proton.engine.Event
  */
 class Receiver(val hostname: String, val port: Int, val address: String, msgSize: Int): ClientHandler() {
     val buffer = ByteArray(msgSize)
-    public var msgsReceived = 0
+    public var msgsReceived = 0L
 
 
     override fun onReactorInit(event: Event) {

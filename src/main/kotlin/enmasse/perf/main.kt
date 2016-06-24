@@ -1,7 +1,6 @@
 package enmasse.perf
 
 import org.apache.commons.cli.*
-import java.util.concurrent.CompletionService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -60,4 +59,8 @@ fun runBenchmark(clients: Int, hostname: String, port: Int, address: String, msg
     val executor = Executors.newFixedThreadPool(clients.size)
     clients.forEach{c -> executor.execute(c)}
     executor.shutdown()
+    executor.awaitTermination(runLength + 10, TimeUnit.SECONDS)
+
+    val results = clients.map(Client::result).foldRight(Result(0, runLength), {a, b -> Result(a.numMessages + b.numMessages, a.runTime)})
+    println("Sent and received ${results.numMessages} in ${results.runTime} seconds. Throughput: ${results.throughput()}")
 }
