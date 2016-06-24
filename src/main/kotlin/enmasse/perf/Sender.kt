@@ -3,6 +3,7 @@ package enmasse.perf
 import org.apache.qpid.proton.Proton
 import org.apache.qpid.proton.amqp.Binary
 import org.apache.qpid.proton.amqp.messaging.AmqpValue
+import org.apache.qpid.proton.amqp.transport.DeliveryState
 import org.apache.qpid.proton.engine.Event
 import org.apache.qpid.proton.reactor.FlowController
 import org.apache.qpid.proton.reactor.Handshaker
@@ -44,6 +45,10 @@ class Sender(val hostname:String, val port: Int, val address: String, val msgSiz
         sender.open()
     }
 
+    override fun onDelivery(e: Event) {
+        e.delivery.settle()
+    }
+
     override fun onLinkFlow(e: Event) {
         val snd = e.link as org.apache.qpid.proton.engine.Sender
         //println("Link flow, sending data (credit: ${snd.credit}")
@@ -51,7 +56,8 @@ class Sender(val hostname:String, val port: Int, val address: String, val msgSiz
             val tag:ByteArray = java.lang.String.valueOf(nextTag++).toByteArray()
             val dlv = snd.delivery(tag)
             snd.send(msgBuffer, 0, msgLen)
-            dlv.settle()
+            //dlv.settle()
+            //println("Ds: ${dlv}")
             snd.advance()
             msgsSent++
         }
@@ -60,5 +66,4 @@ class Sender(val hostname:String, val port: Int, val address: String, val msgSiz
     override fun onTransportError(e: Event) {
         println("Error during transport: ${e.transport.condition.description}")
     }
-}
-
+j

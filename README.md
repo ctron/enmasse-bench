@@ -1,6 +1,6 @@
 # Building
 
-   gradle build
+    gradle build
 
 # Running
     tar xvf build/distributions/perf-tester.tar 
