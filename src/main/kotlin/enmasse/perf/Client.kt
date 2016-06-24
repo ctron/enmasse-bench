@@ -20,7 +20,6 @@ class Client(hostname:String, port:Int, address:String, msgSize: Int, val runLen
         recvHandler.stop()
         val end = System.currentTimeMillis()
         runTime = (end - start) / 1000
-        println("Runtime was ${runTime} seconds")
     }
 
     fun result(): Result {
