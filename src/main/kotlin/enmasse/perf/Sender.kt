@@ -1,5 +1,8 @@
 package enmasse.perf
 
+import org.apache.qpid.proton.Proton
+import org.apache.qpid.proton.amqp.Binary
+import org.apache.qpid.proton.amqp.messaging.AmqpValue
 import org.apache.qpid.proton.engine.Event
 import org.apache.qpid.proton.reactor.FlowController
 import org.apache.qpid.proton.reactor.Handshaker
@@ -11,8 +14,15 @@ import java.util.concurrent.TimeUnit
 class Sender(val hostname:String, val port: Int, val address: String, val msgSize: Int): ClientHandler() {
 
     var nextTag = 0
-    val msgData: ByteArray = 1.rangeTo(msgSize).map { a -> a.toByte() }.toByteArray()
     var msgsSent = 0
+    val msgBuffer: ByteArray = ByteArray(1024)
+    var msgLen = 0
+
+    init {
+        val msg = Proton.message()
+        msg.body = AmqpValue(Binary(1.rangeTo(msgSize).map { a -> a.toByte() }.toByteArray()))
+        msgLen = msg.encode(msgBuffer, 0, msgBuffer.size)
+    }
 
     override fun onReactorInit(event: Event) {
         event.reactor.connectionToHost(hostname, port, this)
@@ -40,7 +50,8 @@ class Sender(val hostname:String, val port: Int, val address: String, val msgSiz
         if (snd.credit > 0) {
             val tag:ByteArray = java.lang.String.valueOf(nextTag++).toByteArray()
             val dlv = snd.delivery(tag)
-            snd.send(msgData, 0, msgSize)
+            snd.send(msgBuffer, 0, msgLen)
+            dlv.settle()
             snd.advance()
             msgsSent++
         }

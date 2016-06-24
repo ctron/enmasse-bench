@@ -17,5 +17,6 @@ class Client(hostname:String, port:Int, address:String, msgSize: Int, val runLen
         sendHandler.stop()
         recvHandler.stop()
         println("Received ${recvHandler.msgsReceived} messages in ${runLength} seconds (${recvHandler.msgsReceived / runLength} msg/s)")
+        println("Sent ${sendHandler.msgsSent} messages in ${runLength} seconds (${sendHandler.msgsSent / runLength} msg/s)")
     }
 }
