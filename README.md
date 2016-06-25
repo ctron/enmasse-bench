@@ -9,5 +9,5 @@ senders/receivers to increase the load.
     gradle build
 
 ## Running
-    tar xvf build/distributions/ebench
+    tar xvf build/distributions/ebench.tar
     ./ebench/bin/ebench -h 127.0.0.1 -c 1 -a amqp-test -p 5674 -d 60 -s 128  
