@@ -2,6 +2,8 @@ package enmasse.perf
 
 import org.apache.qpid.proton.engine.BaseHandler
 import org.apache.qpid.proton.engine.Event
+import org.apache.qpid.proton.reactor.FlowController
+import org.apache.qpid.proton.reactor.Handshaker
 
 /**
  * @author lulf
@@ -9,6 +11,11 @@ import org.apache.qpid.proton.engine.Event
 class Receiver(val address: String, msgSize: Int): BaseHandler() {
     val buffer = ByteArray(msgSize)
     var msgsReceived = 0L
+
+    init {
+        add(Handshaker())
+        add(FlowController())
+    }
 
     override fun onConnectionInit(event: Event) {
         val conn = event.connection
