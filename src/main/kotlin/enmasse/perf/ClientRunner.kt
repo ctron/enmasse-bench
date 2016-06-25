@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit
 /**
  * @author lulf
  */
-open class ClientRunner(val hostname: String, val port: Int, val clientHandler: CoreHandler, val duration: Int): BaseHandler(), Runnable {
+open class ClientRunner(val hostname: String, val port: Int, val clientHandler: BaseHandler, val duration: Int): BaseHandler(), Runnable {
     val reactor = Proton.reactor(this)
     val thr = Thread(this)
     var startTime = 0L
