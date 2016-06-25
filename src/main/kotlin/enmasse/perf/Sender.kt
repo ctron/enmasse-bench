@@ -3,16 +3,15 @@ package enmasse.perf
 import org.apache.qpid.proton.Proton
 import org.apache.qpid.proton.amqp.Binary
 import org.apache.qpid.proton.amqp.messaging.AmqpValue
-import org.apache.qpid.proton.amqp.transport.DeliveryState
+import org.apache.qpid.proton.engine.BaseHandler
 import org.apache.qpid.proton.engine.Event
 import org.apache.qpid.proton.reactor.FlowController
 import org.apache.qpid.proton.reactor.Handshaker
-import java.util.concurrent.TimeUnit
 
 /**
  * @author lulf
  */
-class Sender(val hostname:String, val port: Int, val address: String, val msgSize: Int, runTime: Int): ClientHandler(runTime) {
+class Sender(val address: String, val msgSize: Int): BaseHandler() {
 
     var nextTag = 0
     var msgsSent = 0
@@ -20,21 +19,19 @@ class Sender(val hostname:String, val port: Int, val address: String, val msgSiz
     var msgLen = 0
 
     init {
+        add(Handshaker())
+        add(FlowController())
+
         val msg = Proton.message()
         msg.body = AmqpValue(Binary(1.rangeTo(msgSize).map { a -> a.toByte() }.toByteArray()))
         msgLen = msg.encode(msgBuffer, 0, msgBuffer.size)
     }
 
-    override fun onReactorInit(event: Event) {
-        super.onReactorInit(event)
-        event.reactor.connectionToHost(hostname, port, this)
-    }
-
     override fun onConnectionInit(event: Event) {
         val conn = event.connection
-        conn.container = "enmasse-bench1"
+        conn.container = "ebench-send"
         val session = conn.session()
-        val sender = session.sender("enmasse-bench-sender")
+        val sender = session.sender("ebench-send")
 
         val target = org.apache.qpid.proton.amqp.messaging.Target()
         target.address = address

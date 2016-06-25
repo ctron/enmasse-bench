@@ -21,7 +21,7 @@ fun main(args: Array<String>) {
     options.addOption(createRequiredOption("p", "port", "Port to use on server"))
     options.addOption(createRequiredOption("a", "address", "Address to use for messages"))
     options.addOption(createRequiredOption("s", "messageSize", "Size of messages"))
-    options.addOption(createRequiredOption("r", "runLength", "Number of seconds to run test"))
+    options.addOption(createRequiredOption("d", "duration", "Number of seconds to run test"))
 
     try {
         val cmd = parser.parse(options, args)
@@ -30,13 +30,13 @@ fun main(args: Array<String>) {
         val port = Integer.parseInt(cmd.getOptionValue("p"))
         val address = cmd.getOptionValue("a")
         val msgSize = Integer.parseInt(cmd.getOptionValue("s"))
-        val runLength = Integer.parseInt(cmd.getOptionValue("r"))
+        val duration = Integer.parseInt(cmd.getOptionValue("d"))
 
-        runBenchmark(clients, hostname, port, address, msgSize, runLength)
+        runBenchmark(clients, hostname, port, address, msgSize, duration)
     } catch (e: ParseException) {
         println("Unable to parse arguments: ${args}")
         val formatter = HelpFormatter()
-        formatter.printHelp("enmasse-bench", options)
+        formatter.printHelp("ebench", options)
         System.exit(1)
     }
 }
@@ -49,16 +49,16 @@ fun createRequiredOption(name: String, longName: String, desc: String): Option {
             .build()
 }
 
-fun runBenchmark(clients: Int, hostname: String, port: Int, address: String, msgSize: Int, runLength: Int) {
+fun runBenchmark(clients: Int, hostname: String, port: Int, address: String, msgSize: Int, duration: Int) {
     val clients = 1.rangeTo(clients).map { i ->
-        Client(hostname, port, address, msgSize, runLength)
+        Client(hostname, port, address, msgSize, duration)
     }
 
     val executor = Executors.newFixedThreadPool(clients.size)
     clients.forEach{c -> executor.execute(c)}
     executor.shutdown()
-    executor.awaitTermination(runLength + 10L, TimeUnit.SECONDS)
+    executor.awaitTermination(duration + 10L, TimeUnit.SECONDS)
 
-    val results = clients.map(Client::result).foldRight(Result(0, 0), {a, b -> Result(a.numMessages + b.numMessages, Math.max(a.runTime, b.runTime)) })
-    println("Sent and received ${results.numMessages} in ${results.runTime / 1000} seconds. Throughput: ${results.throughput()}")
+    val results = clients.map(Client::result).foldRight(Result(0, 0), {a, b -> Result(a.numMessages + b.numMessages, Math.max(a.duration, b.duration)) })
+    println("Sent and received ${results.numMessages} in ${results.duration / 1000} seconds. Throughput: ${results.throughput()}")
 }

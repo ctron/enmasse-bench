@@ -5,25 +5,27 @@ import java.util.concurrent.TimeUnit
 /**
  * @author lulf
  */
-class Client(hostname:String, port:Int, address:String, msgSize: Int, val runLength: Int): Runnable
+class Client(val hostname:String, val port:Int, address:String, msgSize: Int, val duration: Int): Runnable
 {
-    val sendHandler = Sender(hostname, port, address, msgSize, runLength)
-    val recvHandler = Receiver(hostname, port, address, msgSize, runLength)
+    val sender = Sender(address, msgSize)
+    val recveiver = Receiver(address, msgSize)
+    val sendRunner = ClientRunner(hostname, port, sender, duration)
+    val recvRunner = ClientRunner(hostname, port, recveiver, duration)
 
     override fun run() {
-        recvHandler.start()
-        sendHandler.start()
-        sendHandler.stop()
-        recvHandler.stop()
+        recvRunner.start()
+        sendRunner.start()
+        sendRunner.stop()
+        recvRunner.stop()
     }
 
     fun result(): Result {
-        return Result(recvHandler.msgsReceived, recvHandler.endTime - recvHandler.startTime)
+        return Result(recveiver.msgsReceived, recvRunner.endTime - recvRunner.startTime)
     }
 }
 
-data class Result(val numMessages: Long, val runTime: Long) {
+data class Result(val numMessages: Long, val duration: Long) {
     fun throughput(): Long {
-        return numMessages / (runTime / 1000)
+        return numMessages / (duration / 1000)
     }
 }

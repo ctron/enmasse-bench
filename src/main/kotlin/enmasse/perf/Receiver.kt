@@ -1,25 +1,20 @@
 package enmasse.perf
 
+import org.apache.qpid.proton.engine.BaseHandler
 import org.apache.qpid.proton.engine.Event
 
 /**
  * @author lulf
  */
-class Receiver(val hostname: String, val port: Int, val address: String, msgSize: Int, runTime: Int): ClientHandler(runTime) {
+class Receiver(val address: String, msgSize: Int): BaseHandler() {
     val buffer = ByteArray(msgSize)
-    public var msgsReceived = 0L
-
-
-    override fun onReactorInit(event: Event) {
-        super.onReactorInit(event)
-        event.reactor.connectionToHost(hostname, port, this)
-    }
+    var msgsReceived = 0L
 
     override fun onConnectionInit(event: Event) {
         val conn = event.connection
-        conn.container = "enmasse-bench2"
+        conn.container = "ebench-recv"
         val session = conn.session()
-        val recv = session.receiver("enmasse-bench-receiver")
+        val recv = session.receiver("ebench-recv")
 
         val source = org.apache.qpid.proton.amqp.messaging.Source()
         source.address = address

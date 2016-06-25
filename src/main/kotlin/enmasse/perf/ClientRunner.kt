@@ -2,6 +2,7 @@ package enmasse.perf
 
 import org.apache.qpid.proton.Proton
 import org.apache.qpid.proton.engine.BaseHandler
+import org.apache.qpid.proton.engine.CoreHandler
 import org.apache.qpid.proton.engine.Event
 import org.apache.qpid.proton.reactor.FlowController
 import org.apache.qpid.proton.reactor.Handshaker
@@ -10,17 +11,12 @@ import java.util.concurrent.TimeUnit
 /**
  * @author lulf
  */
-open class ClientHandler(val runtime: Int) : BaseHandler(), Runnable {
+open class ClientRunner(val hostname: String, val port: Int, val clientHandler: CoreHandler, val duration: Int): BaseHandler(), Runnable {
     val reactor = Proton.reactor(this)
     val thr = Thread(this)
     var startTime = 0L
     var endTime = 0L
     @Volatile var running = false
-
-    init {
-        add(Handshaker())
-        add(FlowController())
-    }
 
     fun start() {
         running = true
@@ -29,7 +25,8 @@ open class ClientHandler(val runtime: Int) : BaseHandler(), Runnable {
 
     override fun onReactorInit(e: Event) {
         startTime = System.currentTimeMillis()
-        reactor.schedule(TimeUnit.SECONDS.toMillis(runtime.toLong()).toInt(), this)
+        e.reactor.connectionToHost(hostname, port, clientHandler)
+        e.reactor.schedule(TimeUnit.SECONDS.toMillis(duration.toLong()).toInt(), this)
     }
 
     override fun onTimerTask(e: Event) {
