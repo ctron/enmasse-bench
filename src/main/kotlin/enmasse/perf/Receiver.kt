@@ -35,6 +35,10 @@ class Receiver(val address: String, msgSize: Int): BaseHandler() {
         recv.open()
     }
 
+    override fun onConnectionRemoteOpen(e: Event) {
+        println("Connected to router ${e.connection.remoteContainer} on host ${e.connection.remoteHostname}")
+    }
+
     override fun onTransportError(e: Event) {
         println("Transport: ${e.transport.condition.description}")
     }

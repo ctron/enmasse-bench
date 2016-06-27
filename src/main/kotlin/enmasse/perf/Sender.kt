@@ -42,6 +42,10 @@ class Sender(val address: String, val msgSize: Int): BaseHandler() {
         sender.open()
     }
 
+    override fun onConnectionRemoteOpen(e: Event) {
+        println("Connected to router ${e.connection.remoteContainer} on host ${e.connection.remoteHostname}")
+    }
+
     override fun onDelivery(e: Event) {
         if (e.delivery.remotelySettled()) {
             e.delivery.settle()
