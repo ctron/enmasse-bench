@@ -1,0 +1,34 @@
+sudo: required
+language: java
+jdk:
+  - oraclejdk8
+
+services:
+  - docker
+
+before_cache:
+  - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
+  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+
+cache:
+  directories:
+    - "$HOME/.gradle/caches/"
+    - "$HOME/.gradle/wrapper/"
+
+after_success:
+    - export REPO=enmasseproject/ebench
+    - export TAG=`if [ "$TRAVIS_BRANCH" == "master" ]; then echo "latest"; else echo $TRAVIS_BRANCH ; fi`
+    - docker build -t $REPO:$COMMIT .
+    - if [ "$TRAVIS_BRANCH" == "master" ]; then
+      docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS;
+      docker tag $REPO:$COMMIT $REPO:$TAG;
+      docker tag $REPO:$COMMIT $REPO:travis-$TRAVIS_BUILD_NUMBER;
+      docker push $REPO;
+      fi
+
+env:
+    global:
+        - secure: "KVkCyXdliG1FXe6mFjAzOjfEiUxyShUUUwzRTHkcVoORAplSitzlZECWBSJEw2SA2odsld/joDSuULm28yMqs5r6ss/8cd7qXh4q2DJWREYRsTChKYGyLfl4O3J49SWC98yVacTqLpZ+fLV1Ent6R86hu9GyISupW3pxzd5+A5MsEjB4nX5cyXpQ00uFPR0qObY5nfv915PHYycIpG59chsEl4hSHNk7FjNdbxqHF1TJPsY+tVoJI1AJu45MY7bwYfhyclZn7zD77TgRd14OGj2C8afZLvDdCd4/FVG0f7YbCMJW7QTxTWUHQSWCJ6QAIN1NxRlJjCYpiIjf689pwAgqAdTZ1wYx7aIZfLHX/AWT+SUPnNNC16OMcfC+nr6i2ejF+vih0b6M0MvgeI5FPyrQTnmQWaK7i1+rqBB/s8fLmA3G+ZeMARvUKDSP09Y8tHZyZO2JNu+gTjS30JKzIZ2+CTpaMAia23ctBpKrpRN0Ymu7tur+GTgj7VlaZpnIqepMtSFz1YsP0sAlKhoRUzsJxR+ktqeVZbTkTiocNvNb1eWmyENE7SSBIU/A/sFTG/NI8uyO0SjudFiaQJu8ttKTgzeh3UlUYmb+dyOXD9xL75Vib3LmmZbypEYN2Q2a/paX8ZdsmOv9i5RAf440IKKRSfslcrcf8pLFj/YJAjs=" # DOCKER_EMAIL
+        - secure: "lVujuP1AsEzYfFtT9woQ+tmQUspk22rBfNWLSrtGGwIbGtHqBNVfolObAWNQlH8ssHHFpJHyiV/oeb5WE0ExQnhlBs7mb6rvdBUeLXBLTXWUVwpgh/tig4hwjjgVyofvHpv69m+Hk7rRkUVPZkviZcdC1TRVkMJDaxhyEBmproTNnGC3DTzkNsVdLLkPmn6gULKYG9iva8UFYklLiVz4zetraa3ag8QnkPU2ENu+eiPlmWSKmFm3Q9ZHRCm7dsSCPx3ANsDFe2/xOWh/CjxN1yobFr/3Mxx2SGoH+yEpoikFnOvcwNXU3I1SM6UjOrKL0Lb676gQUBjxJMEbbsI2ORGd2jDCTMK0aauVH0iqHXhqm/o1p4yjROUdWgqVrMzHN24SWuHo62B9AvvN+uWpEDPRGZGHrqL8xbkdRHJR0fM5s9rkkie+/KSbkBp9N55OZWUPB8cvDm1Kp28VyljHUz9mQY0QcRDt4lf+nIyjIXWF/81qgG1V1VDw05A83z87vZuAEo/4RtbXBkVlf1JC4yujXfnwGVZHOR54ZlaGFHUUmMmGIP/5mvwwiNUau9AZBie1zgwIRcv4sSmfMbEyM4hR2YeZxJPHVIwYana9BYhtfbwtmqqwcrPIBNBKJHN6YlOqPJrKH7BFHaKpru+IK3hDTkCb+uK/BIE4JDnHwuo=" # DOCKER_USER
+        - secure: "bjcTc847l26Ahs8L8ty34TSyw5zL6QZmc9TFrm27k0qf32olZ6TVLy5iZC/TXNdctdLT3n7kFq2SNVIycfo7UPL/7zLyunnfUgEAYtWhP9s+YcKlQzm5jR0IaKxNAZHK/+NWb9g50/HSQj674msY+1ARJ4ObapSXjcsJN+H3GK5gQBWt1Kw0/2zEoJLFuga80vRMEntzQ0eJbiy7UvxUTzucXbI9oMhJPeCgAuAhuRegWf9P/LAo4vmu/aaXlpevUCPRYLFEvjWg84jdHkU/vbUP25woZaQEMtJx8w2MoS4n+WkzUw5YAFYrE7hN0GlxY9u1Xl2Fv1ns4Fg/mBSuuAevASJgNcRd9v/0hwXJNK3Q0IvSEHUwLGldXSHDlY3wed6CzUNZcCYcCmIDqsjzNe9JWqq+woXiagy9y/PhZdq2OLZTCeRp9w8g402qibU+4h/ygQNov7XsNMdWDJ6toUPnk0hgRHTq3TnDQnfC1V3ucYKvNGxgdkZlhWs5VJHj2T6foN59i6m89JEEH+0HABShM/qxjkHq0dXwWiWAHamPT1E/cVynb1v0aNo8L9oaLQlTldaSxBKY4X+W61Y+DWdP3sIyssYvCxiMZgodD7Dcle2GEA/ofQpzXZSuSU+QkzuBUA+p4rp9G9E2q5gyEZeXEXrNqXr1EVEvUUc7M/Y=" # DOCKER_PASS
+        - COMMIT=${TRAVIS_COMMIT::8}
