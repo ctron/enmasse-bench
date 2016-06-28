@@ -76,10 +76,11 @@ fun runBenchmark(clients: Int, hostname: String, port: Int, address: String, msg
     // Timer is safe to use here, as we exit after the loop anyway
     val timer = Timer()
     if (printInterval != null) {
+        val printIntervalMillis = TimeUnit.SECONDS.toMillis(printInterval)
         timer.schedule(timerTask {
             val result = clients.map(Client::result).foldRight(Result(0, 0), { a, b -> Result(a.numMessages + b.numMessages, Math.max(a.duration, b.duration)) })
             printResult(result)
-        }, printInterval.toLong(), printInterval.toLong())
+        }, printIntervalMillis, printIntervalMillis)
     }
     executor.awaitTermination(duration + 10L, TimeUnit.SECONDS)
     timer.cancel()
