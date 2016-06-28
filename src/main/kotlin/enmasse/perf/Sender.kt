@@ -43,7 +43,7 @@ class Sender(val address: String, val msgSize: Int): BaseHandler() {
     }
 
     override fun onConnectionRemoteOpen(e: Event) {
-        println("Connected to router ${e.connection.remoteContainer} on host ${e.connection.remoteHostname}")
+        println("Sender connected to router ${e.connection.remoteContainer}")
     }
 
     override fun onDelivery(e: Event) {
