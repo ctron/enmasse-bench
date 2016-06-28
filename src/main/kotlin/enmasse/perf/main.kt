@@ -1,8 +1,10 @@
 package enmasse.perf
 
 import org.apache.commons.cli.*
+import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.concurrent.timerTask
 
 /**
  * This is a benchmarking tool designed to find the limits of an EnMasse cluster by doing request-response. The
@@ -22,6 +24,7 @@ fun main(args: Array<String>) {
     options.addOption(createRequiredOption("a", "address", "Address to use for messages"))
     options.addOption(createRequiredOption("s", "messageSize", "Size of messages"))
     options.addOption(createRequiredOption("d", "duration", "Number of seconds to run test"))
+    options.addOption(createOption("i", "interval", "Interval when printing statistics"))
 
     try {
         val cmd = parser.parse(options, args)
@@ -31,14 +34,22 @@ fun main(args: Array<String>) {
         val address = cmd.getOptionValue("a")
         val msgSize = Integer.parseInt(cmd.getOptionValue("s"))
         val duration = Integer.parseInt(cmd.getOptionValue("d"))
+        val printInterval = if (cmd.hasOption("i")) java.lang.Long.parseLong(cmd.getOptionValue("i")) else null
 
-        runBenchmark(clients, hostname, port, address, msgSize, duration)
+        runBenchmark(clients, hostname, port, address, msgSize, duration, printInterval)
     } catch (e: ParseException) {
         println("Unable to parse arguments: ${args}")
         val formatter = HelpFormatter()
         formatter.printHelp("ebench", options)
         System.exit(1)
     }
+}
+
+fun createOption(name: String, longName: String, desc: String): Option {
+    return Option.builder(name).longOpt(longName)
+            .hasArg()
+            .desc(desc)
+            .build()
 }
 
 fun createRequiredOption(name: String, longName: String, desc: String): Option {
@@ -49,7 +60,11 @@ fun createRequiredOption(name: String, longName: String, desc: String): Option {
             .build()
 }
 
-fun runBenchmark(clients: Int, hostname: String, port: Int, address: String, msgSize: Int, duration: Int) {
+fun printResult(result: Result) {
+    println("Sent and received ${result.numMessages} in ${result.duration / 1000} seconds. Throughput: ${result.throughput()}")
+}
+
+fun runBenchmark(clients: Int, hostname: String, port: Int, address: String, msgSize: Int, duration: Int, printInterval: Long?) {
     val clients = 1.rangeTo(clients).map { i ->
         Client(hostname, port, address, msgSize, duration)
     }
@@ -57,8 +72,18 @@ fun runBenchmark(clients: Int, hostname: String, port: Int, address: String, msg
     val executor = Executors.newFixedThreadPool(clients.size)
     clients.forEach{c -> executor.execute(c)}
     executor.shutdown()
-    executor.awaitTermination(duration + 10L, TimeUnit.SECONDS)
 
-    val results = clients.map(Client::result).foldRight(Result(0, 0), {a, b -> Result(a.numMessages + b.numMessages, Math.max(a.duration, b.duration)) })
-    println("Sent and received ${results.numMessages} in ${results.duration / 1000} seconds. Throughput: ${results.throughput()}")
+    // Timer is safe to use here, as we exit after the loop anyway
+    val timer = Timer()
+    if (printInterval != null) {
+        timer.schedule(timerTask {
+            val result = clients.map(Client::result).foldRight(Result(0, 0), { a, b -> Result(a.numMessages + b.numMessages, Math.max(a.duration, b.duration)) })
+            printResult(result)
+        }, printInterval.toLong(), printInterval.toLong())
+    }
+    executor.awaitTermination(duration + 10L, TimeUnit.SECONDS)
+    timer.cancel()
+
+    val result = clients.map(Client::result).foldRight(Result(0, 0), { a, b -> Result(a.numMessages + b.numMessages, Math.max(a.duration, b.duration)) })
+    printResult(result)
 }

@@ -11,12 +11,11 @@ import org.apache.qpid.proton.reactor.Handshaker
 /**
  * @author lulf
  */
-class Sender(val address: String, val msgSize: Int): BaseHandler() {
-
-    var nextTag = 0
-    var msgsSent = 0
-    val msgBuffer: ByteArray = ByteArray(1024)
-    var msgLen = 0
+class Sender(val address: String, val msgSize: Int): BaseHandler(), ClientHandler {
+    private var nextTag = 0
+    private var msgsSent = 0L
+    private val msgBuffer: ByteArray = ByteArray(1024)
+    private var msgLen = 0
 
     init {
         add(Handshaker())
@@ -69,4 +68,10 @@ class Sender(val address: String, val msgSize: Int): BaseHandler() {
     override fun onTransportError(e: Event) {
         println("Transport: ${e.transport.condition.description}")
     }
+
+    override fun messageCount(): Long {
+        return msgsSent
+    }
+
 }
+

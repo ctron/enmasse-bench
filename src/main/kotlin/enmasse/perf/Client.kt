@@ -1,7 +1,5 @@
 package enmasse.perf
 
-import java.util.concurrent.TimeUnit
-
 /**
  * @author lulf
  */
@@ -20,12 +18,7 @@ class Client(val hostname:String, val port:Int, address:String, msgSize: Int, va
     }
 
     fun result(): Result {
-        return Result(recveiver.msgsReceived, recvRunner.endTime - recvRunner.startTime)
+        return recvRunner.result();
     }
 }
 
-data class Result(val numMessages: Long, val duration: Long) {
-    fun throughput(): Long {
-        return numMessages / (duration / 1000)
-    }
-}

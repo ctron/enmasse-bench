@@ -4,13 +4,15 @@ import org.apache.qpid.proton.engine.BaseHandler
 import org.apache.qpid.proton.engine.Event
 import org.apache.qpid.proton.reactor.FlowController
 import org.apache.qpid.proton.reactor.Handshaker
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * @author lulf
  */
-class Receiver(val address: String, msgSize: Int): BaseHandler() {
+class Receiver(val address: String, msgSize: Int): BaseHandler(), ClientHandler {
+
     val buffer = ByteArray(msgSize)
-    var msgsReceived = 0L
+    var msgsReceived = AtomicLong()
 
     init {
         add(Handshaker())
@@ -53,7 +55,11 @@ class Receiver(val address: String, msgSize: Int): BaseHandler() {
             val read = recv.recv(buffer, 0, buffer.size)
             recv.advance()
             delivery.settle()
-            msgsReceived++
+            msgsReceived.incrementAndGet()
         }
+    }
+
+    override fun messageCount(): Long {
+        return msgsReceived.get()
     }
 }
