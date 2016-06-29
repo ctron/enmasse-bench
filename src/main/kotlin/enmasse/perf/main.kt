@@ -65,7 +65,7 @@ fun createRequiredOption(name: String, longName: String, desc: String): Option {
 
 fun collectResult(clients: List<Client>): Result {
     return clients.map(Client::result)
-            .foldRight(Result(0, 0, 0, emptyArray()), {a, b -> mergeResults(a, b)})
+            .foldRight(Result(0, 0, 0, emptyList()), {a, b -> mergeResults(a, b)})
 }
 
 fun runBenchmark(clients: Int, hostname: String, port: Int, address: String, msgSize: Int, duration: Int, printInterval: Long?, resultFormatter: ResultFormatter) {
