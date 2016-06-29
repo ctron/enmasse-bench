@@ -1,9 +1,8 @@
 package enmasse.perf
 
-import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-data class Result(val numMessages: Long, val duration: Long, val totalLatency: Long, val buckets: List<Bucket>, val minLatency: Long, val maxLatency: Long) {
+data class MetricSnapshot(val numMessages: Long, val duration: Long, val totalLatency: Long, val buckets: List<Bucket>, val minLatency: Long, val maxLatency: Long) {
     fun throughput(): Long {
         return numMessages / (duration / 1000)
     }
@@ -25,15 +24,15 @@ data class Result(val numMessages: Long, val duration: Long, val totalLatency: L
 
 }
 
-val emptyResult: Result = Result(0, 0, 0, emptyList(), Long.MAX_VALUE, Long.MIN_VALUE)
+val emptyMetricSnapshot: MetricSnapshot = MetricSnapshot(0, 0, 0, emptyList(), Long.MAX_VALUE, Long.MIN_VALUE)
 
 interface ResultFormatter {
-    fun asString(result: Result): String
+    fun asString(metricSnapshot: MetricSnapshot): String
 }
 
 
-fun mergeResults(a: Result, b: Result): Result {
-    return Result(a.numMessages + b.numMessages,
+fun mergeResults(a: MetricSnapshot, b: MetricSnapshot): MetricSnapshot {
+    return MetricSnapshot(a.numMessages + b.numMessages,
             Math.max(a.duration, b.duration),
             a.totalLatency + b.totalLatency,
             mergeBuckets(a.buckets, b.buckets),
@@ -55,11 +54,28 @@ fun mergeBuckets(a: List<Bucket>, b: List<Bucket>): List<Bucket> {
     }
 }
 
-class MetricRecorder(bucketStep: Long, numBuckets: Long) {
-    @Volatile private var totalLatency = 0L
-    @Volatile private var numMessages= 0L
-    @Volatile private var minLatency = Long.MAX_VALUE
-    @Volatile private var maxLatency = 0L
+class MetricRecorder(val bucketStep: Long, val numBuckets: Long) {
+    @Volatile private var currentStore = MetricStore(bucketStep, numBuckets)
+    @Volatile private var resetTime = 0L
+
+    fun snapshot(stop:Long = System.currentTimeMillis()): MetricSnapshot {
+        val store = currentStore
+        val start = resetTime
+        currentStore = MetricStore(bucketStep, numBuckets)
+        resetTime = System.currentTimeMillis()
+        return store.snapshot(start, stop)
+    }
+
+    fun record(latency: Long) {
+        currentStore.record(latency)
+    }
+}
+
+class MetricStore(bucketStep: Long, numBuckets: Long) {
+    private var totalLatency = 0L
+    private var numMessages= 0L
+    private var minLatency = Long.MAX_VALUE
+    private var maxLatency = 0L
     private val buckets: List<Bucket>
     init {
         buckets = listOf(0.rangeTo(numBuckets - 1).map { i ->
@@ -90,8 +106,8 @@ class MetricRecorder(bucketStep: Long, numBuckets: Long) {
         }
     }
 
-    fun result(duration: Long): Result {
-        return Result(numMessages, duration, totalLatency, buckets, minLatency, maxLatency)
+    fun snapshot(start: Long, end: Long): MetricSnapshot {
+        return MetricSnapshot(numMessages, end - start, totalLatency, buckets, minLatency, maxLatency)
     }
 }
 

@@ -14,12 +14,18 @@ class Client(val hostname:String, val port:Int, address:String, msgSize: Int, va
     override fun run() {
         recvRunner.start()
         sendRunner.start()
+        metricRecorder.snapshot() // To reset start counter
         sendRunner.stop()
         recvRunner.stop()
     }
 
-    fun result(): Result {
-        return metricRecorder.result(sendRunner.currentRuntime())
+    fun snapshot(): MetricSnapshot {
+        return if (sendRunner.running()) {
+            metricRecorder.snapshot()
+        } else {
+            metricRecorder.snapshot(sendRunner.endTime())
+        }
+
     }
 }
 

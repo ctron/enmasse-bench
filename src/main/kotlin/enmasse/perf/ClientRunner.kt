@@ -13,7 +13,6 @@ open class ClientRunner(val hostname: String, val port: Int, val clientHandler: 
     private val reactor = Proton.reactor(this)
     private val thr = Thread(this)
     private var endTime = 0L
-    private @Volatile var startTime = 0L
     private @Volatile var running = false
 
     fun start() {
@@ -22,7 +21,6 @@ open class ClientRunner(val hostname: String, val port: Int, val clientHandler: 
     }
 
     override fun onReactorInit(e: Event) {
-        startTime = System.currentTimeMillis()
         e.reactor.connectionToHost(hostname, port, clientHandler)
         e.reactor.schedule(TimeUnit.SECONDS.toMillis(duration.toLong()).toInt(), this)
     }
@@ -46,12 +44,12 @@ open class ClientRunner(val hostname: String, val port: Int, val clientHandler: 
         thr.join()
     }
 
-    fun currentRuntime(): Long {
-        if (startTime > endTime) {
-            return System.currentTimeMillis() - startTime
-        } else {
-            return endTime - startTime
-        }
+    fun running(): Boolean {
+        return running
+    }
+
+    fun endTime(): Long {
+        return endTime
     }
 }
 

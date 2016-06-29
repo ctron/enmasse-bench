@@ -13,7 +13,6 @@ import org.apache.qpid.proton.reactor.Handshaker
  */
 class Sender(val address: String, val msgSize: Int, val metricRecorder: MetricRecorder): BaseHandler() {
     private var nextTag = 0
-    private var msgsSent = 0L
     private val msgBuffer: ByteArray = ByteArray(1024)
     private var msgLen = 0
     private val unsetteled: MutableMap<ByteArray, Long> = mutableMapOf()
