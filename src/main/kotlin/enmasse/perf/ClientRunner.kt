@@ -2,13 +2,14 @@ package enmasse.perf
 
 import org.apache.qpid.proton.Proton
 import org.apache.qpid.proton.engine.BaseHandler
+import org.apache.qpid.proton.engine.CoreHandler
 import org.apache.qpid.proton.engine.Event
 import java.util.concurrent.TimeUnit
 
 /**
  * @author lulf
  */
-open class ClientRunner(val hostname: String, val port: Int, val clientHandler: ClientHandler, val duration: Int): BaseHandler(), Runnable {
+open class ClientRunner(val hostname: String, val port: Int, val clientHandler: CoreHandler, val duration: Int): BaseHandler(), Runnable {
     private val reactor = Proton.reactor(this)
     private val thr = Thread(this)
     private var endTime = 0L
@@ -45,11 +46,11 @@ open class ClientRunner(val hostname: String, val port: Int, val clientHandler: 
         thr.join()
     }
 
-    fun result(): Result {
+    fun currentRuntime(): Long {
         if (startTime > endTime) {
-            return Result(clientHandler.messageCount(), System.currentTimeMillis() - startTime)
+            return System.currentTimeMillis() - startTime
         } else {
-            return Result(clientHandler.messageCount(), endTime - startTime)
+            return endTime - startTime
         }
     }
 }

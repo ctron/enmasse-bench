@@ -5,7 +5,8 @@ package enmasse.perf
  */
 class Client(val hostname:String, val port:Int, address:String, msgSize: Int, val duration: Int): Runnable
 {
-    val sender = Sender(address, msgSize)
+    val metricRecorder = MetricRecorder(10, 100000)
+    val sender = Sender(address, msgSize, metricRecorder)
     val recveiver = Receiver(address, msgSize)
     val sendRunner = ClientRunner(hostname, port, sender, duration)
     val recvRunner = ClientRunner(hostname, port, recveiver, duration)
@@ -18,7 +19,7 @@ class Client(val hostname:String, val port:Int, address:String, msgSize: Int, va
     }
 
     fun result(): Result {
-        return recvRunner.result();
+        return metricRecorder.result(sendRunner.currentRuntime())
     }
 }
 

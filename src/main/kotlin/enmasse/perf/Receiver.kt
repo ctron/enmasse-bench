@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicLong
 /**
  * @author lulf
  */
-class Receiver(val address: String, msgSize: Int): BaseHandler(), ClientHandler {
+class Receiver(val address: String, msgSize: Int): BaseHandler() {
 
     val buffer = ByteArray(msgSize)
     var msgsReceived = AtomicLong()
@@ -57,9 +57,5 @@ class Receiver(val address: String, msgSize: Int): BaseHandler(), ClientHandler 
             delivery.settle()
             msgsReceived.incrementAndGet()
         }
-    }
-
-    override fun messageCount(): Long {
-        return msgsReceived.get()
     }
 }

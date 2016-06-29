@@ -11,11 +11,12 @@ import org.apache.qpid.proton.reactor.Handshaker
 /**
  * @author lulf
  */
-class Sender(val address: String, val msgSize: Int): BaseHandler(), ClientHandler {
+class Sender(val address: String, val msgSize: Int, val metricRecorder: MetricRecorder): BaseHandler() {
     private var nextTag = 0
     private var msgsSent = 0L
     private val msgBuffer: ByteArray = ByteArray(1024)
     private var msgLen = 0
+    private val unsetteled: MutableMap<ByteArray, Long> = mutableMapOf()
 
     init {
         add(Handshaker())
@@ -48,6 +49,9 @@ class Sender(val address: String, val msgSize: Int): BaseHandler(), ClientHandle
     override fun onDelivery(e: Event) {
         if (e.delivery.remotelySettled()) {
             e.delivery.settle()
+            val endTime = System.nanoTime()
+            val startTime = unsetteled.remove(e.delivery.tag)!!
+            metricRecorder.record(endTime - startTime)
         }
     }
 
@@ -57,21 +61,16 @@ class Sender(val address: String, val msgSize: Int): BaseHandler(), ClientHandle
         if (snd.credit > 0) {
             val tag:ByteArray = java.lang.String.valueOf(nextTag++).toByteArray()
             val dlv = snd.delivery(tag)
+            unsetteled.put(tag, System.nanoTime())
             snd.send(msgBuffer, 0, msgLen)
             //dlv.settle()
             //println("Ds: ${dlv}")
             snd.advance()
-            msgsSent++
         }
     }
 
     override fun onTransportError(e: Event) {
         println("Transport: ${e.transport.condition.description}")
     }
-
-    override fun messageCount(): Long {
-        return msgsSent
-    }
-
 }
 

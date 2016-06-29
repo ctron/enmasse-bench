@@ -1,28 +1,32 @@
 buildscript {
-   ext.kotlin_version = '1.0.2'
-   ext.proton_version = '0.13.0'
-   ext.commons_cli_version = '1.3.1'
+    ext.kotlin_version = '1.0.2'
+    ext.proton_version = '0.13.0'
+    ext.commons_cli_version = '1.3.1'
+    ext.commons_math_version = '3.6.1'
+    ext.org_json_version = '20160212'
 
-   repositories {
-     mavenCentral()
-   }
+    repositories {
+        mavenCentral()
+    }
 
-   dependencies {
-     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-   }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
 }
 
 apply plugin: 'kotlin'
 
 repositories {
-  mavenCentral()
+    mavenCentral()
 }
 
 dependencies {
     compile 'org.slf4j:slf4j-api:1.7.13'
 	compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     compile "commons-cli:commons-cli:${commons_cli_version}"
-    compile "org.apache.qpid:proton-j:$proton_version"
+    compile "org.apache.commons:commons-math3:${commons_math_version}"
+    compile "org.apache.qpid:proton-j:${proton_version}"
+    compile "org.json:json:${org_json_version}"
     testCompile 'junit:junit:4.12'
 }
 

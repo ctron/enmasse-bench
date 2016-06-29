@@ -25,6 +25,7 @@ fun main(args: Array<String>) {
     options.addOption(createRequiredOption("s", "messageSize", "Size of messages"))
     options.addOption(createRequiredOption("d", "duration", "Number of seconds to run test"))
     options.addOption(createOption("i", "interval", "Interval when printing statistics"))
+    options.addOption(createOption("o", "outputFormat", "Output format (json or default)"))
 
     try {
         val cmd = parser.parse(options, args)
@@ -35,8 +36,10 @@ fun main(args: Array<String>) {
         val msgSize = Integer.parseInt(cmd.getOptionValue("s"))
         val duration = Integer.parseInt(cmd.getOptionValue("d"))
         val printInterval = if (cmd.hasOption("i")) java.lang.Long.parseLong(cmd.getOptionValue("i")) else null
+        val outputFormat = cmd.getOptionValue("o", "default")
 
-        runBenchmark(clients, hostname, port, address, msgSize, duration, printInterval)
+        val formatter = if (outputFormat.equals("json")) JSONResultFormatter() else DefaultResultFormatter()
+        runBenchmark(clients, hostname, port, address, msgSize, duration, printInterval, formatter)
     } catch (e: ParseException) {
         println("Unable to parse arguments: ${args}")
         val formatter = HelpFormatter()
@@ -60,11 +63,12 @@ fun createRequiredOption(name: String, longName: String, desc: String): Option {
             .build()
 }
 
-fun printResult(result: Result) {
-    println("Sent and received ${result.numMessages} in ${result.duration / 1000} seconds. Throughput: ${result.throughput()}")
+fun collectResult(clients: List<Client>): Result {
+    return clients.map(Client::result)
+            .foldRight(Result(0, 0, 0, emptyArray()), {a, b -> mergeResults(a, b)})
 }
 
-fun runBenchmark(clients: Int, hostname: String, port: Int, address: String, msgSize: Int, duration: Int, printInterval: Long?) {
+fun runBenchmark(clients: Int, hostname: String, port: Int, address: String, msgSize: Int, duration: Int, printInterval: Long?, resultFormatter: ResultFormatter) {
     val clients = 1.rangeTo(clients).map { i ->
         Client(hostname, port, address, msgSize, duration)
     }
@@ -78,13 +82,11 @@ fun runBenchmark(clients: Int, hostname: String, port: Int, address: String, msg
     if (printInterval != null) {
         val printIntervalMillis = TimeUnit.SECONDS.toMillis(printInterval)
         timer.schedule(timerTask {
-            val result = clients.map(Client::result).foldRight(Result(0, 0), { a, b -> Result(a.numMessages + b.numMessages, Math.max(a.duration, b.duration)) })
-            printResult(result)
+            println(resultFormatter.asString(collectResult(clients)))
         }, printIntervalMillis, printIntervalMillis)
     }
     executor.awaitTermination(duration + 10L, TimeUnit.SECONDS)
     timer.cancel()
 
-    val result = clients.map(Client::result).foldRight(Result(0, 0), { a, b -> Result(a.numMessages + b.numMessages, Math.max(a.duration, b.duration)) })
-    printResult(result)
+    println(resultFormatter.asString(collectResult(clients)))
 }
