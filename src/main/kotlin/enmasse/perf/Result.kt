@@ -31,41 +31,6 @@ interface ResultFormatter {
     fun asString(result: Result): String
 }
 
-class DefaultResultFormatter: ResultFormatter {
-    override fun asString(result: Result): String {
-        val sb = StringBuilder()
-        sb.appendln("Result:")
-        sb.appendln("Duration:\t\t${result.duration / 1000} s")
-        sb.appendln("Messages:\t\t${result.numMessages}")
-        sb.appendln("Throughput:\t\t${result.throughput()} msgs/s")
-        sb.appendln("Latency avg:\t\t${result.averageLatency()} us")
-        sb.appendln("Latency min:\t\t${result.minLatency} us")
-        sb.appendln("Latency max:\t\t${result.maxLatency} us")
-        sb.appendln("Latency 50p:\t\t${result.percentile(0.5)} us")
-        sb.appendln("Latency 75p:\t\t${result.percentile(0.75)} us")
-        sb.appendln("Latency 90p:\t\t${result.percentile(0.9)} us")
-        sb.appendln("Latency 95p:\t\t${result.percentile(0.95)} us")
-        return sb.toString()
-     }
-}
-
-class JSONResultFormatter: ResultFormatter {
-    override fun asString(result: Result): String {
-        val json = JSONObject()
-        json.put("duration", result.duration / 1000)
-        json.put("messages", result.numMessages)
-        json.put("throughput", result.throughput())
-        json.put("avg", result.averageLatency())
-        json.put("min", result.minLatency)
-        json.put("max", result.maxLatency)
-        json.put("50p", result.percentile(0.5))
-        json.put("75p", result.percentile(0.75))
-        json.put("90p", result.percentile(0.9))
-        json.put("95p", result.percentile(0.95))
-        return json.toString(0)
-    }
-
-}
 
 fun mergeResults(a: Result, b: Result): Result {
     return Result(a.numMessages + b.numMessages,
