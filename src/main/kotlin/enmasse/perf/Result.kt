@@ -3,8 +3,7 @@ package enmasse.perf
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-
-data class Result(val numMessages: Long, val duration: Long, val totalLatency: Long, val buckets: List<Bucket>) {
+data class Result(val numMessages: Long, val duration: Long, val totalLatency: Long, val buckets: List<Bucket>, val minLatency: Long, val maxLatency: Long) {
     fun throughput(): Long {
         return numMessages / (duration / 1000)
     }
@@ -26,6 +25,8 @@ data class Result(val numMessages: Long, val duration: Long, val totalLatency: L
 
 }
 
+val emptyResult: Result = Result(0, 0, 0, emptyList(), Long.MAX_VALUE, Long.MIN_VALUE)
+
 interface ResultFormatter {
     fun asString(result: Result): String
 }
@@ -38,6 +39,8 @@ class DefaultResultFormatter: ResultFormatter {
         sb.appendln("Messages:\t\t${result.numMessages}")
         sb.appendln("Throughput:\t\t${result.throughput()} msgs/s")
         sb.appendln("Latency avg:\t\t${result.averageLatency()} us")
+        sb.appendln("Latency min:\t\t${result.minLatency} us")
+        sb.appendln("Latency max:\t\t${result.maxLatency} us")
         sb.appendln("Latency 50p:\t\t${result.percentile(0.5)} us")
         sb.appendln("Latency 75p:\t\t${result.percentile(0.75)} us")
         sb.appendln("Latency 90p:\t\t${result.percentile(0.9)} us")
@@ -53,6 +56,8 @@ class JSONResultFormatter: ResultFormatter {
         json.put("messages", result.numMessages)
         json.put("throughput", result.throughput())
         json.put("avg", result.averageLatency())
+        json.put("min", result.minLatency)
+        json.put("max", result.maxLatency)
         json.put("50p", result.percentile(0.5))
         json.put("75p", result.percentile(0.75))
         json.put("90p", result.percentile(0.9))
@@ -63,8 +68,12 @@ class JSONResultFormatter: ResultFormatter {
 }
 
 fun mergeResults(a: Result, b: Result): Result {
-
-    return Result(a.numMessages + b.numMessages, Math.max(a.duration, b.duration), a.totalLatency + b.totalLatency, mergeBuckets(a.buckets, b.buckets))
+    return Result(a.numMessages + b.numMessages,
+            Math.max(a.duration, b.duration),
+            a.totalLatency + b.totalLatency,
+            mergeBuckets(a.buckets, b.buckets),
+            Math.min(a.minLatency, b.minLatency),
+            Math.max(a.maxLatency, b.maxLatency))
 }
 
 fun mergeBuckets(a: List<Bucket>, b: List<Bucket>): List<Bucket> {
@@ -84,6 +93,8 @@ fun mergeBuckets(a: List<Bucket>, b: List<Bucket>): List<Bucket> {
 class MetricRecorder(bucketStep: Long, numBuckets: Long) {
     @Volatile private var totalLatency = 0L
     @Volatile private var numMessages= 0L
+    @Volatile private var minLatency = Long.MAX_VALUE
+    @Volatile private var maxLatency = 0L
     private val buckets: List<Bucket>
     init {
         buckets = listOf(0.rangeTo(numBuckets - 1).map { i ->
@@ -97,6 +108,15 @@ class MetricRecorder(bucketStep: Long, numBuckets: Long) {
         val latency = TimeUnit.NANOSECONDS.toMicros(latencyInNanos)
         numMessages++
         totalLatency += latency
+
+        if (latency < minLatency) {
+            minLatency = latency
+        }
+
+        if (latency > maxLatency) {
+            maxLatency = latency
+        }
+
         for (bucket in buckets) {
             if (bucket.range.contains(latency)) {
                 bucket.increment(latency)
@@ -106,7 +126,7 @@ class MetricRecorder(bucketStep: Long, numBuckets: Long) {
     }
 
     fun result(duration: Long): Result {
-        return Result(numMessages, duration, totalLatency, buckets)
+        return Result(numMessages, duration, totalLatency, buckets, minLatency, maxLatency)
     }
 }
 
