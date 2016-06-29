@@ -65,7 +65,7 @@ fun createRequiredOption(name: String, longName: String, desc: String): Option {
 
 fun collectResult(clients: List<Client>): MetricSnapshot {
     return clients.map(Client::snapshot)
-            .foldRight(emptyMetricSnapshot, { a, b -> mergeResults(a, b)})
+            .foldRight(emptyMetricSnapshot, { a, b -> mergeSnapshots(a, b)})
 }
 
 fun runBenchmark(clients: Int, hostname: String, port: Int, address: String, msgSize: Int, duration: Int, printInterval: Long?, resultReporter: ResultReporter) {
