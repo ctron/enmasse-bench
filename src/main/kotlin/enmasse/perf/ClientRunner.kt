@@ -52,9 +52,3 @@ open class ClientRunner(val hostname: String, val port: Int, val clientHandler: 
         return endTime
     }
 }
-
-class LoggingHandler(val id:String): BaseHandler() {
-    override fun onUnhandled(event: Event) {
-        println("${id}: ${event}")
-    }
-}
