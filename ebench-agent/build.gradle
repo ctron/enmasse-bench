@@ -1,0 +1,10 @@
+description = "EnMasse Benchmarking Agent"
+dependencies {
+    compile project(":ebench-lib")
+    compile 'org.slf4j:slf4j-api:1.7.13'
+	compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    compile "commons-cli:commons-cli:${commons_cli_version}"
+}
+
+apply plugin: 'application'
+mainClassName = 'enmasse.perf.MainKt'

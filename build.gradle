@@ -1,3 +1,7 @@
+allprojects  {
+    group = 'enmasse'
+}
+
 buildscript {
     ext.kotlin_version = '1.0.2'
     ext.proton_version = '0.13.0'
@@ -13,20 +17,11 @@ buildscript {
     }
 }
 
-apply plugin: 'kotlin'
+subprojects {
+    apply plugin: 'kotlin'
 
-repositories {
-    mavenCentral()
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
 }
-
-dependencies {
-    compile 'org.slf4j:slf4j-api:1.7.13'
-	compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-    compile "commons-cli:commons-cli:${commons_cli_version}"
-    compile "org.apache.commons:commons-math3:${commons_math_version}"
-    compile "org.apache.qpid:proton-j:${proton_version}"
-    testCompile 'junit:junit:4.12'
-}
-
-apply plugin: 'application'
-mainClassName = 'enmasse.perf.MainKt'
