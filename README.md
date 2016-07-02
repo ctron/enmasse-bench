@@ -9,5 +9,10 @@ senders/receivers to increase the load.
     gradle build
 
 ## Running
-    tar xvf build/distributions/ebench.tar
-    ./ebench/bin/ebench -h 127.0.0.1 -c 1 -a amqp-test -p 5674 -d 60 -p 10 -s 128  
+    tar xvf ebench-agent/build/distributions/ebench-agent.tar
+    ./ebench-agent/bin/ebench-agent -h 127.0.0.1 -c 1 -a amqp-test -p 5674 -d 60 -p 10 -s 128  
+
+
+The agent can also be run as part of an EnMasse cluster, where multiple agents can be scaled by
+increasing the number of replicas. The ebench-collector can then talk to the ebench-agents and
+collect metrics for aggregation and integration with other services such as prometheus.
