@@ -1,12 +1,11 @@
-description = "EnMasse Benchmarking Agent"
+description = "EnMasse Benchmarking Collector"
 apply plugin: 'kotlin'
 dependencies {
     compile project(":ebench-lib")
     compile 'org.slf4j:slf4j-api:1.7.13'
 	compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     compile "commons-cli:commons-cli:${commons_cli_version}"
-    compile "io.vertx:vertx-core:${vertx_version}"
 }
 
 apply plugin: 'application'
-mainClassName = 'enmasse.perf.MainKt'
+mainClassName = 'enmasse.bench.collector.MainKt'

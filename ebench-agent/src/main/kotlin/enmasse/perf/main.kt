@@ -1,10 +1,8 @@
 package enmasse.perf
 
 import org.apache.commons.cli.*
-import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import kotlin.concurrent.timerTask
 
 /**
  * This is a benchmarking tool designed to find the limits of an EnMasse cluster by doing request-response. The
@@ -25,7 +23,8 @@ fun main(args: Array<String>) {
     options.addOption(createRequiredOption("s", "messageSize", "Size of messages"))
     options.addOption(createRequiredOption("d", "duration", "Number of seconds to run test"))
     options.addOption(createOption("r", "reportInterval", "Interval when reporting statistics"))
-    options.addOption(createOption("o", "outputReporter", "Output reporter (stdout or collector)"))
+    options.addOption(createOption("m", "mode", "Mode (standalone or collector)"))
+    options.addOption(createOption("w", "waitTime", "Wait time between sending messages (in milliseconds)"))
 
     try {
         val cmd = parser.parse(options, args)
@@ -36,10 +35,17 @@ fun main(args: Array<String>) {
         val msgSize = Integer.parseInt(cmd.getOptionValue("s"))
         val duration = Integer.parseInt(cmd.getOptionValue("d"))
         val printInterval = if (cmd.hasOption("r")) java.lang.Long.parseLong(cmd.getOptionValue("r")) else null
-        val outputReporter = cmd.getOptionValue("o", "stdout")
+        val mode = cmd.getOptionValue("m", "standalone")
+        val waitTime = if (cmd.hasOption("w")) Integer.parseInt(cmd.getOptionValue("w")) else null
 
-        val reporter = if (outputReporter.equals("collector")) CollectorReporter() else StdoutReporter()
-        runBenchmark(clients, hostname, port, address, msgSize, duration, printInterval, reporter)
+        val clientHandles = 1.rangeTo(clients).map { i ->
+            Client(hostname, port, address, msgSize, duration, waitTime)
+        }
+        val collector =
+                if (mode.equals("collector")) RemoteCollector(clientHandles)
+                else PrintCollector(clientHandles, printInterval)
+
+        runBenchmark(clientHandles, duration, collector)
     } catch (e: ParseException) {
         println("Unable to parse arguments: ${args}")
         val formatter = HelpFormatter()
@@ -63,30 +69,12 @@ fun createRequiredOption(name: String, longName: String, desc: String): Option {
             .build()
 }
 
-fun collectResult(clients: List<Client>): MetricSnapshot {
-    return clients.map(Client::snapshot)
-            .foldRight(emptyMetricSnapshot, { a, b -> mergeSnapshots(a, b)})
-}
-
-fun runBenchmark(clients: Int, hostname: String, port: Int, address: String, msgSize: Int, duration: Int, printInterval: Long?, resultReporter: ResultReporter) {
-    val clients = 1.rangeTo(clients).map { i ->
-        Client(hostname, port, address, msgSize, duration)
-    }
+fun runBenchmark(clients: List<Client>, duration: Int, metricCollector: MetricCollector) {
 
     val executor = Executors.newFixedThreadPool(clients.size)
     clients.forEach{c -> executor.execute(c)}
+    metricCollector.start()
     executor.shutdown()
-
-    // Timer is safe to use here, as we exit after the loop anyway
-    val timer = Timer()
-    if (printInterval != null) {
-        val printIntervalMillis = TimeUnit.SECONDS.toMillis(printInterval)
-        timer.schedule(timerTask {
-            resultReporter.report(collectResult(clients))
-        }, printIntervalMillis, printIntervalMillis)
-    }
     executor.awaitTermination(duration + 10L, TimeUnit.SECONDS)
-    timer.cancel()
-
-    resultReporter.report(collectResult(clients))
+    metricCollector.stop()
 }

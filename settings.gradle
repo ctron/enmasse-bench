@@ -2,3 +2,8 @@ rootProject.name = 'ebench'
 
 include ':ebench-lib'
 include ':ebench-agent'
+include ':ebench-collector'
+
+project(':ebench-lib').projectDir = "$rootDir/ebench-lib" as File
+project(':ebench-agent').projectDir = "$rootDir/ebench-agent" as File
+project(':ebench-collector').projectDir = "$rootDir/ebench-collector" as File

@@ -11,11 +11,12 @@ import org.apache.qpid.proton.reactor.Handshaker
 /**
  * @author lulf
  */
-class Sender(val address: String, val msgSize: Int, val metricRecorder: MetricRecorder): BaseHandler() {
+class Sender(val address: String, val msgSize: Int, val metricRecorder: MetricRecorder, val waitTime: Int?): BaseHandler() {
     private var nextTag = 0
     private val msgBuffer: ByteArray = ByteArray(1024)
     private var msgLen = 0
     private val unsetteled: MutableMap<ByteArray, Long> = mutableMapOf()
+    private var sender:org.apache.qpid.proton.engine.Sender? = null
 
     init {
         add(Handshaker())
@@ -30,15 +31,27 @@ class Sender(val address: String, val msgSize: Int, val metricRecorder: MetricRe
         val conn = event.connection
         conn.container = "ebench-send"
         val session = conn.session()
-        val sender = session.sender("ebench-send")
+        sender = session.sender("ebench-send")
 
         val target = org.apache.qpid.proton.amqp.messaging.Target()
         target.address = address
-        sender.target = target
+        sender!!.target = target
 
         conn.open()
         session.open()
-        sender.open()
+        sender!!.open()
+
+        if (waitTime != null) {
+            println("Scheduling wait")
+            event.reactor.schedule(waitTime, this)
+        }
+    }
+
+    override fun onTimerTask(e: Event) {
+        if (waitTime != null) {
+            sendData(sender!!)
+            e.reactor.schedule(waitTime, this)
+        }
     }
 
     override fun onConnectionRemoteOpen(e: Event) {
@@ -56,16 +69,19 @@ class Sender(val address: String, val msgSize: Int, val metricRecorder: MetricRe
 
     override fun onLinkFlow(e: Event) {
         val snd = e.link as org.apache.qpid.proton.engine.Sender
-        //println("Link flow, sending data (credit: ${snd.credit}")
-        if (snd.credit > 0) {
-            val tag:ByteArray = java.lang.String.valueOf(nextTag++).toByteArray()
-            val dlv = snd.delivery(tag)
-            unsetteled.put(tag, System.nanoTime())
-            snd.send(msgBuffer, 0, msgLen)
-            //dlv.settle()
-            //println("Ds: ${dlv}")
-            snd.advance()
+        if (waitTime == null && snd.credit > 0) {
+            sendData(snd)
         }
+    }
+
+    fun sendData(snd: org.apache.qpid.proton.engine.Sender) {
+        val tag:ByteArray = java.lang.String.valueOf(nextTag++).toByteArray()
+        val dlv = snd.delivery(tag)
+        unsetteled.put(tag, System.nanoTime())
+        snd.send(msgBuffer, 0, msgLen)
+        //dlv.settle()
+        //println("Ds: ${dlv}")
+        snd.advance()
     }
 
     override fun onTransportError(e: Event) {
