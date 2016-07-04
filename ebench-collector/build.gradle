@@ -5,6 +5,7 @@ dependencies {
     compile 'org.slf4j:slf4j-api:1.7.13'
 	compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     compile "commons-cli:commons-cli:${commons_cli_version}"
+    compile "com.openshift:openshift-restclient-java:${openshift_restclient_version}"
 }
 
 apply plugin: 'application'
