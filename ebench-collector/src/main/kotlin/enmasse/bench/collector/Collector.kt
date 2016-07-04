@@ -11,11 +11,12 @@ import java.util.concurrent.TimeUnit
 /**
  * @author Ulf Lilleengen
  */
-class Collector(val agents: List<AgentInfo>): TimerTask() {
+class Collector(val monitor: AgentMonitor): TimerTask() {
     val vertx = Vertx.vertx()
     val client = vertx.createHttpClient()
 
     override fun run() {
+        val agents = monitor.listAgents()
         val queue = java.util.concurrent.ArrayBlockingQueue<MetricSnapshot>(agents.size)
         agents.forEach { agent ->
             client.getNow(agent.port, agent.hostname, "/", { response ->
