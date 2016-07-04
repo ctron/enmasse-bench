@@ -1,14 +1,12 @@
 package enmasse.bench.collector
 
-import enmasse.perf.MetricSnapshot
-import enmasse.perf.deserializeMetricSnapshot
-import enmasse.perf.mergeSnapshots
-import enmasse.perf.printSnapshot
+import enmasse.perf.*
+import io.vertx.core.CompositeFuture
+import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpClientOptions
 import java.util.*
-import java.util.concurrent.TimeUnit
 
 /**
  * @author Ulf Lilleengen
@@ -21,8 +19,8 @@ class Collector(val monitor: AgentMonitor): TimerTask() {
         try {
             val agents = monitor.listAgents()
             println("Fetching metrics from : ${agents}")
-            val queue = java.util.concurrent.ArrayBlockingQueue<MetricSnapshot>(agents.size)
-            agents.forEach { agent ->
+            CompositeFuture.all(agents.map { agent ->
+                val future: Future<MetricSnapshot> = Future.future()
                 client.getNow(agent.port, agent.hostname, "/", { response ->
                     // Create an empty buffer
                     val totalBuffer = Buffer.buffer()
@@ -31,27 +29,23 @@ class Collector(val monitor: AgentMonitor): TimerTask() {
                         totalBuffer.appendBuffer(buffer);
                     });
 
-                    response.endHandler({ v ->
+                    response.endHandler{ v ->
                         val snapshot = deserializeMetricSnapshot(totalBuffer)
-                        queue.put(snapshot)
-                    })
+                        future.complete(snapshot)
+                    }
                 })
-            }
-
-            var merged: MetricSnapshot? = null
-            var numMerged = 0
-            while (numMerged < agents.size) {
-                val snapshot = queue.poll(60, TimeUnit.SECONDS)
-                if (merged == null) {
-                    merged = snapshot
+                future
+            }).setHandler { ar ->
+                if (ar.succeeded()) {
+                    var merged = emptyMetricSnapshot
+                    for (snapshot in ar.result().list<MetricSnapshot>()) {
+                        merged = mergeSnapshots(merged, snapshot)
+                    }
+                    printSnapshot(merged)
                 } else {
-                    merged = mergeSnapshots(merged, snapshot)
+                    println("Error fetching result from agents: ${ar.cause().message}")
                 }
-                numMerged++
             }
-
-            val metricSnapshot = merged!!
-            printSnapshot(metricSnapshot)
         } catch (e: Exception) {
             println("Error fetching metrics: ${e.message}")
         }
