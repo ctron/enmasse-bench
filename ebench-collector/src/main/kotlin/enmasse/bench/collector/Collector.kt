@@ -6,6 +6,7 @@ import enmasse.perf.mergeSnapshots
 import enmasse.perf.printSnapshot
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
+import io.vertx.core.http.HttpClientOptions
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -14,7 +15,7 @@ import java.util.concurrent.TimeUnit
  */
 class Collector(val monitor: AgentMonitor): TimerTask() {
     val vertx = Vertx.vertx()
-    val client = vertx.createHttpClient()
+    val client = vertx.createHttpClient(HttpClientOptions().setConnectTimeout(2000).setIdleTimeout(5000))
 
     override fun run() {
         try {
