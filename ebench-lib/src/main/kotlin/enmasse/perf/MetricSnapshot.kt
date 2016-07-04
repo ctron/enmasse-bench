@@ -11,7 +11,7 @@ data class MetricSnapshot(val numMessages: Long, val duration: Long, val totalLa
     }
 
     fun averageLatency(): Long {
-        return totalLatency / numMessages
+        return if (numMessages > 0) totalLatency / numMessages else 0
     }
 
     fun percentile(p: Double): Long {
