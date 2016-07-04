@@ -4,10 +4,9 @@ import com.openshift.restclient.ClientBuilder
 import com.openshift.restclient.ResourceKind
 import com.openshift.restclient.authorization.TokenAuthorizationStrategy
 import com.openshift.restclient.model.IPod
-import com.openshift.restclient.model.IResource
+import io.vertx.core.impl.FileResolver
 import org.apache.commons.cli.*
 import java.io.File
-import java.io.IOException
 import java.nio.file.Files
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -16,6 +15,7 @@ import java.util.concurrent.TimeUnit
  * @author Ulf Lilleengen
  */
 fun main(args: Array<String>) {
+    System.setProperty(FileResolver.CACHE_DIR_BASE_PROP_NAME, "/tmp/vert.x")
     val parser = DefaultParser()
     val options = Options()
     options.addOption(createRequiredOption("i", "interval", "Collection interval (in seconds)"))
