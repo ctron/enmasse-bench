@@ -16,8 +16,8 @@ cache:
     - "$HOME/.gradle/wrapper/"
 
 after_success:
-    - ./build_and_deploy_docker.sh ebench-agent
-    - ./build_and_deploy_docker.sh ebench-collector
+    - ./.build_and_deploy_docker.sh ebench-agent
+    - ./.build_and_deploy_docker.sh ebench-collector
 
 env:
     global:
