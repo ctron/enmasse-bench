@@ -14,7 +14,7 @@ fun main(args: Array<String>) {
     val timer = Executors.newScheduledThreadPool(1)
     val options = Options()
     options.addOption(createRequiredOption("i", "interval", "Collection interval (in seconds)"))
-    options.addOption(createOption("a", "agents", "Comma-separated list of agent <host>:<port>"))
+    options.addOption(createOption("a", "agents", "Comma-separated list of agent <host>:<port> (default: auto-discover)"))
 
     try {
         val cmd = parser.parse(options, args)
