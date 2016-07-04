@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 REPONAME=$1
 ORG=enmasseproject
 REPO="$ORG/$REPONAME"
