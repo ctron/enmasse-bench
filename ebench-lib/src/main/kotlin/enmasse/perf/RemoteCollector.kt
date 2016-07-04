@@ -21,7 +21,6 @@ class RemoteCollector(val clients: List<Client>): MetricCollector {
         server.requestHandler { request ->
             val snapshot = collectResult(clients)
             val response = request.response()
-            println("Duration is: " + snapshot.duration)
             printSnapshot(snapshot)
             response.headers().add("Content-Type", "application/json")
             val buffer = Buffer.buffer()
