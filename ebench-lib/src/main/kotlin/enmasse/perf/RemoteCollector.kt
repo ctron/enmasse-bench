@@ -2,15 +2,22 @@ package enmasse.perf
 
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
-import java.io.StringWriter
+import io.vertx.core.http.HttpServer
+import io.vertx.core.impl.FileResolver
 
 /**
  * @author Ulf Lilleengen
  */
 class RemoteCollector(val clients: List<Client>): MetricCollector {
 
-    val vertx = Vertx.vertx()
-    val server = vertx.createHttpServer()
+    val vertx: Vertx
+    val server: HttpServer
+
+    init {
+        System.setProperty(FileResolver.CACHE_DIR_BASE_PROP_NAME, "/tmp/vert.x")
+        vertx = Vertx.vertx()
+        server = vertx.createHttpServer()
+    };
 
     override fun start() {
         server.requestHandler { request ->
