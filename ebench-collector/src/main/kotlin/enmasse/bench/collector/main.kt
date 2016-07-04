@@ -20,7 +20,6 @@ fun main(args: Array<String>) {
         val cmd = parser.parse(options, args)
         val interval = java.lang.Long.parseLong(cmd.getOptionValue("i"))
         val agentMonitor = if (cmd.hasOption("a")) StaticAgentMonitor(parseAgents(cmd.getOptionValue("a"))) else OpenshiftAgentMonitor()
-        println("Started with agents: ${agentMonitor.listAgents()}")
         timer.scheduleAtFixedRate(Collector(agentMonitor), interval, interval, TimeUnit.SECONDS)
     } catch (e: ParseException) {
         println("Unable to parse arguments: ${args}")

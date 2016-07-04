@@ -19,6 +19,7 @@ class Collector(val monitor: AgentMonitor): TimerTask() {
     override fun run() {
         try {
             val agents = monitor.listAgents()
+            println("Fetching metrics from : ${agents}")
             val queue = java.util.concurrent.ArrayBlockingQueue<MetricSnapshot>(agents.size)
             agents.forEach { agent ->
                 client.getNow(agent.port, agent.hostname, "/", { response ->
@@ -30,7 +31,6 @@ class Collector(val monitor: AgentMonitor): TimerTask() {
                     });
 
                     response.endHandler({ v ->
-                        println("Got snapshot from remote")
                         val snapshot = deserializeMetricSnapshot(totalBuffer)
                         queue.put(snapshot)
                     })
