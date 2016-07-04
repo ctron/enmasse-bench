@@ -7,7 +7,6 @@ export TAG=`if [ "$TRAVIS_BRANCH" == "master" ]; then echo "latest"; else echo $
 echo "TAG: $TAG"
 echo "COMMIT: $COMMIT"
 echo "TRAVIS_BRANCH: $TRAVIS_BRANCH"
-echo "DOCKER_EMAIL: $DOCKER_EMAIL"
 echo "REPO: $REPO"
 
 docker build -t $REPO:$COMMIT $REPONAME
