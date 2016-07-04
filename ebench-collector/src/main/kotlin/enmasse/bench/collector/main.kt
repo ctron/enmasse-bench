@@ -2,7 +2,7 @@ package enmasse.bench.collector
 
 import io.vertx.core.impl.FileResolver
 import org.apache.commons.cli.*
-import java.util.*
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /**
@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit
 fun main(args: Array<String>) {
     System.setProperty(FileResolver.CACHE_DIR_BASE_PROP_NAME, "/tmp/vert.x")
     val parser = DefaultParser()
+    val timer = Executors.newScheduledThreadPool(1)
     val options = Options()
     options.addOption(createRequiredOption("i", "interval", "Collection interval (in seconds)"))
     options.addOption(createOption("a", "agents", "Comma-separated list of agent <host>:<port>"))
@@ -18,11 +19,9 @@ fun main(args: Array<String>) {
     try {
         val cmd = parser.parse(options, args)
         val interval = java.lang.Long.parseLong(cmd.getOptionValue("i"))
-        val intervalMillis = TimeUnit.SECONDS.toMillis(interval)
         val agentMonitor = if (cmd.hasOption("a")) StaticAgentMonitor(parseAgents(cmd.getOptionValue("a"))) else OpenshiftAgentMonitor()
         println("Started with agents: ${agentMonitor.listAgents()}")
-        val timer = Timer()
-        timer.schedule(Collector(agentMonitor), intervalMillis, intervalMillis)
+        timer.scheduleAtFixedRate(Collector(agentMonitor), interval, interval, TimeUnit.SECONDS)
     } catch (e: ParseException) {
         println("Unable to parse arguments: ${args}")
         val formatter = HelpFormatter()

@@ -1,6 +1,6 @@
 package enmasse.perf
 
-import java.util.*
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.timerTask
 
@@ -8,20 +8,19 @@ import kotlin.concurrent.timerTask
  * @author Ulf Lilleengen
  */
 class PrintCollector(val clients: List<Client>, val printInterval: Long?): MetricCollector {
-    private val timer = Timer()
+    private val timer = Executors.newScheduledThreadPool(1)
 
     override fun start() {
         if (printInterval != null) {
-            val printIntervalMillis = TimeUnit.SECONDS.toMillis(printInterval)
-            timer.schedule(timerTask {
+            timer.scheduleAtFixedRate(timerTask {
                 val metricSnapshot = collectResult(clients)
                 printSnapshot(metricSnapshot)
-            }, printIntervalMillis, printIntervalMillis)
+            }, printInterval, printInterval, TimeUnit.SECONDS)
         }
     }
 
     override fun stop() {
-        timer.cancel()
+        timer.shutdown()
     }
 
 
