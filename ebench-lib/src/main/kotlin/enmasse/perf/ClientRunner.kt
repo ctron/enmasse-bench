@@ -33,6 +33,11 @@ open class ClientRunner(val hostname: String, val port: Int, val clientHandler: 
         endTime = System.currentTimeMillis()
     }
 
+    override fun onTransportError(e: Event) {
+        println("Transport error: ${e.transport.condition.description}")
+        running = false
+    }
+
     override fun run() {
         reactor.timeout = 3141
         reactor.start()

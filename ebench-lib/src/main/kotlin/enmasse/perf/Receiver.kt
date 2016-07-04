@@ -41,10 +41,6 @@ class Receiver(val address: String, msgSize: Int): BaseHandler() {
         println("Receiver connected to router ${e.connection.remoteContainer}")
     }
 
-    override fun onTransportError(e: Event) {
-        println("Transport: ${e.transport.condition.description}")
-    }
-
     override fun onDelivery(event: Event) {
         val recv = event.link as org.apache.qpid.proton.engine.Receiver
         recv.current()

@@ -83,9 +83,5 @@ class Sender(val address: String, val msgSize: Int, val metricRecorder: MetricRe
         //println("Ds: ${dlv}")
         snd.advance()
     }
-
-    override fun onTransportError(e: Event) {
-        println("Transport: ${e.transport.condition.description}")
-    }
 }
 
