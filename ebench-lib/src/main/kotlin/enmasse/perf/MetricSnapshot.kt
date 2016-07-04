@@ -16,6 +16,9 @@ data class MetricSnapshot(val numMessages: Long, val duration: Long, val totalLa
 
     fun percentile(p: Double): Long {
         var entriesToCount = (numMessages * p).toLong()
+        if (entriesToCount <= 0) {
+            return 0L
+        }
         for (bucket in buckets) {
             entriesToCount -= bucket.count()
             if (entriesToCount <= 0) {
