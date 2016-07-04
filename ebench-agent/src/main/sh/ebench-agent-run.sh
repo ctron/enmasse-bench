@@ -6,8 +6,4 @@ then
     ARGS="$ARGS -w $BENCH_WAIT_TIME"
 fi
 echo "Launching with args: $ARGS"
-while true
-do
-    ./ebench-agent/bin/ebench-agent $ARGS
-    sleep 2
-done
+./ebench-agent/bin/ebench-agent $ARGS
