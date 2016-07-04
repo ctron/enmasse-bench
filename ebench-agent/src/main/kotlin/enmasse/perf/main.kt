@@ -1,5 +1,6 @@
 package enmasse.perf
 
+import io.vertx.core.impl.FileResolver
 import org.apache.commons.cli.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -14,6 +15,7 @@ import java.util.concurrent.TimeUnit
  * @author lulf
  */
 fun main(args: Array<String>) {
+    System.setProperty(FileResolver.CACHE_DIR_BASE_PROP_NAME, "/tmp/vert.x")
     val parser = DefaultParser()
     val options = Options()
     options.addOption(createRequiredOption("c", "clients", "Number of clients"))
