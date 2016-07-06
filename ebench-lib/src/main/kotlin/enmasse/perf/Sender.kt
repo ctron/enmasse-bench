@@ -74,6 +74,10 @@ class Sender(val address: String, val msgSize: Int, val metricRecorder: MetricRe
         }
     }
 
+    override fun onTransportError(e: Event) {
+        println("Transport error: ${e.transport.condition.description}")
+    }
+
     fun sendData(snd: org.apache.qpid.proton.engine.Sender) {
         val tag:ByteArray = java.lang.String.valueOf(nextTag++).toByteArray()
         val dlv = snd.delivery(tag)
