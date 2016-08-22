@@ -25,7 +25,7 @@ fun main(args: Array<String>) {
     options.addOption(createRequiredOption("s", "messageSize", "Size of messages"))
     options.addOption(createRequiredOption("d", "duration", "Number of seconds to run test"))
     options.addOption(createOption("r", "reportInterval", "Interval when reporting statistics"))
-    options.addOption(createOption("m", "mode", "Mode (standalone or collector)"))
+    options.addOption(createOption("m", "mode", "Mode (standalone, script or collector)"))
     options.addOption(createOption("w", "waitTime", "Wait time between sending messages (in milliseconds)"))
 
     try {
@@ -45,7 +45,7 @@ fun main(args: Array<String>) {
         }
         val collector =
                 if (mode.equals("collector")) RemoteCollector(clientHandles)
-                else PrintCollector(clientHandles, printInterval)
+                else PrintCollector(mode, clientHandles, printInterval)
 
         runBenchmark(clientHandles, duration, collector)
     } catch (e: ParseException) {

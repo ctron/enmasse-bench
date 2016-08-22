@@ -7,24 +7,40 @@ import kotlin.concurrent.timerTask
 /**
  * @author Ulf Lilleengen
  */
-class PrintCollector(val clients: List<Client>, val printInterval: Long?): MetricCollector {
+class PrintCollector(mode: String, val clients: List<Client>, val printInterval: Long?): MetricCollector {
     private val timer = Executors.newScheduledThreadPool(1)
+    val printFn: (MetricSnapshot) -> Unit = if (mode.equals("script")) {
+        { snapshot: MetricSnapshot -> printSnapshotScript(clients.size, snapshot) }
+    } else {
+        ::printSnapshot
+    }
 
     override fun start() {
         if (printInterval != null) {
             timer.scheduleAtFixedRate(timerTask {
-                printSnapshot(collectResult(clients))
+                printFn.invoke(collectResult(clients))
             }, printInterval, printInterval, TimeUnit.SECONDS)
         }
     }
 
     override fun stop() {
         timer.shutdown()
-        printSnapshot(collectResult(clients))
+        printFn.invoke(collectResult(clients))
     }
-
-
 }
+
+fun printSnapshotScript(clients: Int, metricSnapshot: MetricSnapshot) {
+    val sb = StringBuilder()
+    sb.append(clients).append(",")
+    sb.append(java.lang.String.format("%.2f", metricSnapshot.throughput())).append(",")
+    sb.append(metricSnapshot.averageLatency()).append(",")
+    sb.append(metricSnapshot.minLatency).append(",")
+    sb.append(metricSnapshot.maxLatency).append(",")
+    sb.append(metricSnapshot.percentile(0.5)).append(",")
+    sb.append(metricSnapshot.percentile(0.95))
+    println(sb.toString())
+}
+
 
 fun printSnapshot(metricSnapshot: MetricSnapshot) {
     val sb = StringBuilder()
