@@ -13,14 +13,14 @@ class PrintCollector(val clients: List<Client>, val printInterval: Long?): Metri
     override fun start() {
         if (printInterval != null) {
             timer.scheduleAtFixedRate(timerTask {
-                val metricSnapshot = collectResult(clients)
-                printSnapshot(metricSnapshot)
+                printSnapshot(collectResult(clients))
             }, printInterval, printInterval, TimeUnit.SECONDS)
         }
     }
 
     override fun stop() {
         timer.shutdown()
+        printSnapshot(collectResult(clients))
     }
 
 
