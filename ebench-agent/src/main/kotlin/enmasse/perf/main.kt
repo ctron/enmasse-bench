@@ -20,10 +20,11 @@ fun main(args: Array<String>) {
     val options = Options()
     options.addOption(createRequiredOption("c", "clients", "Number of clients"))
     options.addOption(createRequiredOption("h", "hostname", "Hostname of server"))
-    options.addOption(createRequiredOption("p", "port", "Port to use on server"))
     options.addOption(createRequiredOption("a", "address", "Address to use for messages"))
     options.addOption(createRequiredOption("s", "messageSize", "Size of messages"))
     options.addOption(createRequiredOption("d", "duration", "Number of seconds to run test"))
+    options.addOption(createOption("p", "port", "Port to use on server"))
+    options.addOption(createOption("b", "basePort", "Use baseport and separate ports for sender/receiver and for multiple clients"))
     options.addOption(createOption("r", "reportInterval", "Interval when reporting statistics"))
     options.addOption(createOption("m", "mode", "Mode (standalone, script or collector)"))
     options.addOption(createOption("w", "waitTime", "Wait time between sending messages (in milliseconds)"))
@@ -32,7 +33,8 @@ fun main(args: Array<String>) {
         val cmd = parser.parse(options, args)
         val clients = Integer.parseInt(cmd.getOptionValue("c"))
         val hostname = cmd.getOptionValue("h")
-        val port = Integer.parseInt(cmd.getOptionValue("p"))
+        val basePort = if (cmd.hasOption("b")) Integer.parseInt(cmd.getOptionValue("b")) else null
+        val port = if (cmd.hasOption("p")) Integer.parseInt(cmd.getOptionValue("p")) else null
         val address = cmd.getOptionValue("a")
         val msgSize = Integer.parseInt(cmd.getOptionValue("s"))
         val duration = Integer.parseInt(cmd.getOptionValue("d"))
@@ -40,8 +42,18 @@ fun main(args: Array<String>) {
         val mode = cmd.getOptionValue("m", "standalone")
         val waitTime = if (cmd.hasOption("w")) Integer.parseInt(cmd.getOptionValue("w")) else null
 
+        if (basePort == null && port == null) {
+            throw IllegalArgumentException("Either -p or -b option must be specified")
+        }
+
+        val useMultiplePorts = basePort != null
+        var currentPort:Int = if (useMultiplePorts) basePort!! else port!!
         val clientHandles = 1.rangeTo(clients).map { i ->
-            Client(hostname, port, address, msgSize, duration, waitTime)
+            val cli = Client(hostname, currentPort, address, msgSize, duration, waitTime, useMultiplePorts)
+            if (useMultiplePorts) {
+                currentPort+= 2
+            }
+            cli
         }
         val collector =
                 if (mode.equals("collector")) RemoteCollector(clientHandles)
