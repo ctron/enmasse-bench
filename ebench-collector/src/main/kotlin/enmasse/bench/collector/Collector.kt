@@ -38,10 +38,11 @@ class Collector(val monitor: AgentMonitor): TimerTask() {
             }).setHandler { ar ->
                 if (ar.succeeded()) {
                     var merged = emptyMetricSnapshot
-                    for (snapshot in ar.result().list<MetricSnapshot>()) {
+                    val snapshots = ar.result().list<MetricSnapshot>()
+                    for (snapshot in snapshots) {
                         merged = mergeSnapshots(merged, snapshot)
                     }
-                    printSnapshot(merged)
+                    printSnapshotPretty(snapshots.size, merged)
                 } else {
                     println("Error fetching result from agents: ${ar.cause().message}")
                 }
