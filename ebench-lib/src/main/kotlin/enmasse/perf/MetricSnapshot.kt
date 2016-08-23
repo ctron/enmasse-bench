@@ -6,7 +6,6 @@ import io.vertx.core.json.JsonObject
 
 data class MetricSnapshot(val numMessages: Long, val duration: Long, val totalLatency: Long, val buckets: List<Bucket>, val minLatency: Long, val maxLatency: Long) {
     fun throughput(): Double {
-        println("numMessags ${numMessages} duration ${duration}")
         return numMessages / (duration / 1000.toDouble())
     }
 
