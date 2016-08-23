@@ -57,7 +57,8 @@ fun main(args: Array<String>) {
         }
         val collector =
                 if (mode.equals("collector")) RemoteCollector(clientHandles)
-                else PrintCollector(mode, clientHandles, printInterval)
+                else if (mode.equals("script")) TimedCollector(clientHandles, printInterval, ::printSnapshotScriptable)
+                else TimedCollector(clientHandles, printInterval, ::printSnapshotPretty)
 
         runBenchmark(clientHandles, duration, collector)
     } catch (e: ParseException) {

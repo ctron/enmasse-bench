@@ -100,3 +100,33 @@ fun deserializeMetricSnapshot(input: Buffer): MetricSnapshot {
     }
     return MetricSnapshot(numMessages, duration, sum, buckets, min, max)
 }
+
+fun printSnapshotScriptable(clients: Int, metricSnapshot: MetricSnapshot) {
+    val sb = StringBuilder()
+    sb.append(clients).append(",")
+    sb.append(java.lang.String.format("%.2f", metricSnapshot.throughput())).append(",")
+    sb.append(metricSnapshot.averageLatency()).append(",")
+    sb.append(metricSnapshot.minLatency).append(",")
+    sb.append(metricSnapshot.maxLatency).append(",")
+    sb.append(metricSnapshot.percentile(0.5)).append(",")
+    sb.append(metricSnapshot.percentile(0.95))
+    println(sb.toString())
+}
+
+fun printSnapshotPretty(clients: Int, metricSnapshot: MetricSnapshot) {
+    val sb = StringBuilder()
+    sb.appendln("Result:")
+    sb.appendln("Clients:\t\t${clients}")
+    sb.appendln("Duration:\t\t${java.lang.String.format("%.2f", metricSnapshot.duration / 1000.toDouble())} s")
+    sb.appendln("Messages:\t\t${metricSnapshot.numMessages}")
+    sb.appendln("Throughput:\t\t${java.lang.String.format("%.2f", metricSnapshot.throughput())} msgs/s")
+    sb.appendln("Latency avg:\t\t${metricSnapshot.averageLatency()} us")
+    sb.appendln("Latency min:\t\t${metricSnapshot.minLatency} us")
+    sb.appendln("Latency max:\t\t${metricSnapshot.maxLatency} us")
+    sb.appendln("Latency 50p:\t\t${metricSnapshot.percentile(0.5)} us")
+    sb.appendln("Latency 75p:\t\t${metricSnapshot.percentile(0.75)} us")
+    sb.appendln("Latency 90p:\t\t${metricSnapshot.percentile(0.9)} us")
+    sb.appendln("Latency 95p:\t\t${metricSnapshot.percentile(0.95)} us")
+    println(sb.toString())
+}
+
