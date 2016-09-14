@@ -10,4 +10,4 @@ dependencies {
 
 apply plugin: 'application'
 mainClassName = 'enmasse.perf.MainKt'
-applicationDefaultJvmArgs = ["-Dvertx.disableFileCaching", "-Dvertx.disableFileCPResolving"]
+applicationDefaultJvmArgs = ["-Dvertx.disableFileCaching=true", "-Dvertx.disableFileCPResolving=true"]
