@@ -16,6 +16,10 @@
 
 package enmasse.bench.collector
 
+import enmasse.perf.MetricSnapshot
+import io.netty.handler.codec.http.HttpResponseStatus
+import io.vertx.core.Vertx
+import io.vertx.core.json.JsonObject
 import org.apache.commons.cli.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -34,13 +38,51 @@ fun main(args: Array<String>) {
         val cmd = parser.parse(options, args)
         val interval = java.lang.Long.parseLong(cmd.getOptionValue("i"))
         val agentMonitor = if (cmd.hasOption("a")) StaticAgentMonitor(parseAgents(cmd.getOptionValue("a"))) else OpenshiftAgentMonitor()
-        timer.scheduleAtFixedRate(Collector(agentMonitor), interval, interval, TimeUnit.SECONDS)
+        val vertx = Vertx.vertx()
+        val collector = Collector(vertx, agentMonitor)
+        timer.scheduleAtFixedRate(collector, interval, interval, TimeUnit.SECONDS)
+        startServer(vertx, collector);
     } catch (e: ParseException) {
         println("Unable to parse arguments: ${args}")
         val formatter = HelpFormatter()
         formatter.printHelp("ebench-collector", options)
         System.exit(1)
     }
+}
+
+fun startServer(vertx: Vertx, collector: Collector) {
+    vertx.createHttpServer()
+            .requestHandler({ request ->
+                val snapshot = collector.latest()
+                val response = request.response();
+                if (snapshot != null) {
+                    val headers = response.headers()
+                    headers.set("Content-Type", "application/json")
+                    response.write(formatSnapshotJson(snapshot))
+                }
+                response.setStatusCode(HttpResponseStatus.OK.code())
+                response.end()
+            })
+            .listen(8080);
+    }
+
+fun  formatSnapshotJson(snapshot: Pair<Int, MetricSnapshot>): String {
+    val json = JsonObject()
+    val snap = snapshot.second
+    json.put("clients", snapshot.first)
+    json.put("duration", snap.duration)
+    json.put("messages", snap.numMessages)
+    json.put("throughput", snap.throughput())
+    val latencies = JsonObject()
+    latencies.put("avg", snap.averageLatency())
+    latencies.put("min", snap.minLatency)
+    latencies.put("max", snap.maxLatency)
+    latencies.put("50p", snap.percentile(0.5))
+    latencies.put("75p", snap.percentile(0.75))
+    latencies.put("90p", snap.percentile(0.9))
+    latencies.put("95p", snap.percentile(0.95))
+    json.put("latencies", latencies)
+    return json.encode()
 }
 
 fun parseAgents(agentsString: String): List<AgentInfo> {

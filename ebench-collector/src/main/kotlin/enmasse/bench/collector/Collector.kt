@@ -27,9 +27,9 @@ import java.util.*
 /**
  * @author Ulf Lilleengen
  */
-class Collector(val monitor: AgentMonitor): TimerTask() {
-    val vertx = Vertx.vertx()
+class Collector(val vertx: Vertx, val monitor: AgentMonitor): TimerTask() {
     val client = vertx.createHttpClient(HttpClientOptions().setConnectTimeout(2000).setIdleTimeout(5000))
+    @Volatile var latestSnapshot: Pair<Int, MetricSnapshot>? = null;
 
     override fun run() {
         try {
@@ -58,6 +58,7 @@ class Collector(val monitor: AgentMonitor): TimerTask() {
                     for (snapshot in snapshots) {
                         merged = mergeSnapshots(merged, snapshot)
                     }
+                    latestSnapshot = Pair<Int, MetricSnapshot>(snapshots.size, merged)
                     printSnapshotPretty(snapshots.size, merged)
                 } else {
                     println("Error fetching result from agents: ${ar.cause().message}")
@@ -66,5 +67,9 @@ class Collector(val monitor: AgentMonitor): TimerTask() {
         } catch (e: Exception) {
             println("Error fetching metrics: ${e.message}")
         }
+    }
+
+    fun latest(): Pair<Int, MetricSnapshot>? {
+        return latestSnapshot
     }
 }
