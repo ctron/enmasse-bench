@@ -33,7 +33,10 @@ class OpenshiftAgentMonitor: AgentMonitor {
     }
 
     override fun listAgents(): List<AgentInfo> {
-        val pods = client.list<IPod>(ResourceKind.POD, getOpenshiftNamespace(), Collections.singletonMap("name", "ebench-agent"))
+        val labels = LinkedHashMap<String, String>()
+        labels.put("role", "benchmark")
+        labels.put("type", "agent")
+        val pods = client.list<IPod>(ResourceKind.POD, getOpenshiftNamespace(), labels)
         return pods.map { pod -> AgentInfo(pod.ip, pod.containerPorts.iterator().next().containerPort) }
     }
 
