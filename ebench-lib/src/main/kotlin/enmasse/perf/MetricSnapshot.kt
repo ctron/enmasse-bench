@@ -30,6 +30,9 @@ data class MetricSnapshot(val numMessages: Long, val duration: Long, val totalLa
     }
 
     fun percentile(p: Double): Long {
+        if (totalLatency == 0L) {
+            return 0
+        }
         var entriesToCount = (numMessages * p).toLong()
         if (entriesToCount <= 0) {
             return 0L

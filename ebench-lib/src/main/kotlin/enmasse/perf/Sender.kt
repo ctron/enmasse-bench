@@ -27,11 +27,10 @@ import org.apache.qpid.proton.reactor.Handshaker
 /**
  * @author lulf
  */
-class Sender(val address: String, val msgSize: Int, val metricRecorder: MetricRecorder, val waitTime: Int?): BaseHandler() {
+class Sender(val address: String, val msgSize: Int, val waitTime: Int?, val deliveryTracker: DeliveryTracker, val presettled: Boolean): BaseHandler() {
     private var nextTag = 0
     private val msgBuffer: ByteArray = ByteArray(1024)
     private var msgLen = 0
-    private val unsetteled: MutableMap<ByteArray, Long> = mutableMapOf()
     private var sender:org.apache.qpid.proton.engine.Sender? = null
 
     init {
@@ -77,9 +76,7 @@ class Sender(val address: String, val msgSize: Int, val metricRecorder: MetricRe
     override fun onDelivery(e: Event) {
         if (e.delivery.remotelySettled()) {
             e.delivery.settle()
-            val endTime = System.nanoTime()
-            val startTime = unsetteled.remove(e.delivery.tag)!!
-            metricRecorder.record(endTime - startTime)
+            deliveryTracker.onDelivery(e.delivery)
         }
     }
 
@@ -97,9 +94,11 @@ class Sender(val address: String, val msgSize: Int, val metricRecorder: MetricRe
     fun sendData(snd: org.apache.qpid.proton.engine.Sender) {
         val tag:ByteArray = java.lang.String.valueOf(nextTag++).toByteArray()
         val dlv = snd.delivery(tag)
-        unsetteled.put(tag, System.nanoTime())
+        deliveryTracker.onSend(dlv)
         snd.send(msgBuffer, 0, msgLen)
-        //dlv.settle()
+        if (presettled) {
+            dlv.settle()
+        }
         //println("Ds: ${dlv}")
         snd.advance()
     }

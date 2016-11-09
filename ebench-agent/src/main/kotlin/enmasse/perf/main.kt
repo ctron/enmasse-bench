@@ -42,6 +42,7 @@ fun main(args: Array<String>) {
     options.addOption(createOption("r", "reportInterval", "Interval when reporting statistics"))
     options.addOption(createOption("m", "mode", "Mode (standalone, script or collector)"))
     options.addOption(createOption("w", "waitTime", "Wait time between sending messages (in milliseconds)"))
+    options.addOption(createOption("t", "presettle", "Send presettled messages"))
 
     try {
         val cmd = parser.parse(options, args)
@@ -55,6 +56,7 @@ fun main(args: Array<String>) {
         val printInterval = if (cmd.hasOption("r")) java.lang.Long.parseLong(cmd.getOptionValue("r")) else null
         val mode = cmd.getOptionValue("m", "standalone")
         val waitTime = if (cmd.hasOption("w")) Integer.parseInt(cmd.getOptionValue("w")) else null
+        val presettled = cmd.hasOption("t")
 
         if (basePort == null && port == null) {
             throw IllegalArgumentException("Either -p or -b option must be specified")
@@ -63,7 +65,7 @@ fun main(args: Array<String>) {
         val useMultiplePorts = basePort != null
         var currentPort:Int = if (useMultiplePorts) basePort!! else port!!
         val clientHandles = 1.rangeTo(clients).map { i ->
-            val cli = Client(hostname, currentPort, address, msgSize, duration, waitTime, useMultiplePorts)
+            val cli = Client(hostname, currentPort, address, msgSize, duration, waitTime, useMultiplePorts, presettled)
             if (useMultiplePorts) {
                 currentPort+= 2
             }

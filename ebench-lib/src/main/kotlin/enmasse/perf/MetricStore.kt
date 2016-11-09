@@ -32,6 +32,10 @@ class MetricStore(bucketStep: Long, numBuckets: Long) {
         }, listOf(Bucket((bucketStep * numBuckets).rangeTo(Long.MAX_VALUE)))).flatten()
     }
 
+    fun record() {
+        numMessages++
+    }
+
     fun record(latencyInNanos: Long) {
         val latency = TimeUnit.NANOSECONDS.toMicros(latencyInNanos)
         numMessages++

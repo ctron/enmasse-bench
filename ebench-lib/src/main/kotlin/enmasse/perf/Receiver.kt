@@ -24,12 +24,13 @@ import org.apache.qpid.proton.engine.Event
 import org.apache.qpid.proton.engine.Receiver
 import org.apache.qpid.proton.reactor.FlowController
 import org.apache.qpid.proton.reactor.Handshaker
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 /**
  * @author lulf
  */
-class Receiver(val address: String, msgSize: Int): BaseHandler() {
+class Receiver(val address: String, msgSize: Int, val deliveryTracker: DeliveryTracker, val presettled: Boolean): BaseHandler() {
 
     val buffer = ByteArray(msgSize)
 
@@ -79,7 +80,11 @@ class Receiver(val address: String, msgSize: Int): BaseHandler() {
 
             recv.advance()
             delivery.disposition(Accepted())
-            delivery.settle()
+            if (presettled) {
+                deliveryTracker.onDelivery(delivery);
+            } else {
+                delivery.settle()
+            }
         }
     }
 }

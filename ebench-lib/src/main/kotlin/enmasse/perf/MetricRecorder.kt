@@ -31,4 +31,8 @@ class MetricRecorder(val bucketStep: Long, val numBuckets: Long) {
     fun record(latency: Long) {
         currentStore.record(latency)
     }
+
+    fun record() {
+        currentStore.record()
+    }
 }
