@@ -55,7 +55,7 @@ fun main(args: Array<String>) {
         val duration = Integer.parseInt(cmd.getOptionValue("d"))
         val printInterval = if (cmd.hasOption("r")) java.lang.Long.parseLong(cmd.getOptionValue("r")) else null
         val mode = cmd.getOptionValue("m", "standalone")
-        val waitTime = if (cmd.hasOption("w")) Integer.parseInt(cmd.getOptionValue("w")) else null
+        val waitTime = if (cmd.hasOption("w")) Integer.parseInt(cmd.getOptionValue("w")) else 0
         val presettled = cmd.hasOption("t")
 
         if (basePort == null && port == null) {

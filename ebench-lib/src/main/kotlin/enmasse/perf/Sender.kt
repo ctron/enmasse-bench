@@ -27,7 +27,7 @@ import org.apache.qpid.proton.reactor.Handshaker
 /**
  * @author lulf
  */
-class Sender(val address: String, val msgSize: Int, val waitTime: Int?, val deliveryTracker: DeliveryTracker, val presettled: Boolean): BaseHandler() {
+class Sender(val address: String, val msgSize: Int, val waitTime: Int, val deliveryTracker: DeliveryTracker, val presettled: Boolean): BaseHandler() {
     private var nextTag = 0
     private val msgBuffer: ByteArray = ByteArray(1024)
     private var msgLen = 0
@@ -56,7 +56,7 @@ class Sender(val address: String, val msgSize: Int, val waitTime: Int?, val deli
         session.open()
         sender!!.open()
 
-        if (waitTime != null) {
+        if (waitTime > 0) {
             println("Scheduling wait")
             event.reactor.schedule(waitTime, this)
         }
@@ -82,7 +82,7 @@ class Sender(val address: String, val msgSize: Int, val waitTime: Int?, val deli
 
     override fun onLinkFlow(e: Event) {
         val snd = e.link as org.apache.qpid.proton.engine.Sender
-        if (waitTime == null && snd.credit > 0) {
+        if (waitTime == 0 && snd.credit > 0) {
             sendData(snd)
         }
     }

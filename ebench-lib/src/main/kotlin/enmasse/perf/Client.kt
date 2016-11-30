@@ -19,7 +19,7 @@ package enmasse.perf
 /**
  * @author lulf
  */
-class Client(val hostname:String, val port:Int, address:String, msgSize: Int, val duration: Int, val waitTime: Int?, val useMultiplePorts: Boolean, val presettled: Boolean): Runnable
+class Client(val hostname:String, val port:Int, address:String, msgSize: Int, val duration: Int, val waitTime: Int, val useMultiplePorts: Boolean, val presettled: Boolean): Runnable
 {
     val metricRecorder = MetricRecorder(50, 2000)
     val deliveryTracker = DeliveryTracker(metricRecorder)
