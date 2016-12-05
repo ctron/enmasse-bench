@@ -46,7 +46,6 @@ class Client(val hostname:String, val port:Int, address:String, msgSize: Int, va
     private fun waitForSeparateConnections() {
         while (true) {
             if (connectionMonitor.shouldRestart()) {
-                Thread.sleep(5000)
                 sendRunner.stop(true)
                 recvRunner.stop(true)
                 sendRunner = ClientRunner(hostname, port, sender, duration)

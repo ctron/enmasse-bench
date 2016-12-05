@@ -32,6 +32,7 @@ class Sender(val clientId: String, val address: String, val msgSize: Int, val wa
     private val msgBuffer: ByteArray = ByteArray(1024)
     private var msgLen = 0
     private var sender:org.apache.qpid.proton.engine.Sender? = null
+    @Volatile private var aborted = true
 
     init {
         add(Handshaker())
@@ -43,6 +44,7 @@ class Sender(val clientId: String, val address: String, val msgSize: Int, val wa
     }
 
     override fun onConnectionInit(event: Event) {
+        aborted = false
         val conn = event.connection
         conn.container = clientId
         conn.open()
@@ -55,11 +57,16 @@ class Sender(val clientId: String, val address: String, val msgSize: Int, val wa
         }
     }
 
+    fun aborted(): Boolean {
+        return aborted
+    }
+
     override fun onConnectionRemoteOpen(e: Event) {
         println("Sender connected to router ${e.connection.remoteContainer}")
         if (!connectionMonitor.registerConnection(clientId, e.connection.remoteContainer)) {
             println("Aborting sender connection")
             e.connection.close()
+            aborted = true
         }
         val session = e.connection.session()
         sender = session.sender(clientId)
