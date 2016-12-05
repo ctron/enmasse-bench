@@ -16,8 +16,6 @@
 
 package enmasse.perf
 
-import java.time.Year
-
 /**
  * @author lulf
  */
@@ -33,28 +31,32 @@ class Client(val hostname:String, val port:Int, address:String, msgSize: Int, va
     @Volatile var recvRunner = ClientRunner(hostname, if (useMultiplePorts) port + 1 else port, recveiver, duration)
 
     override fun run() {
-        while (true) {
-            recvRunner.start()
-            sendRunner.start()
+        recvRunner.start()
+        sendRunner.start()
 
-            println("Entering barrier")
-            if (splitClients) {
-                if (connectionMonitor.shouldRestart()) {
-                    println("Should restart!")
-                    Thread.sleep(5000)
-                    sendRunner.stop()
-                    recvRunner.stop()
-                    sendRunner = ClientRunner(hostname, port, sender, duration)
-                    recvRunner = ClientRunner(hostname, if (useMultiplePorts) port + 1 else port, recveiver, duration)
-                } else {
-                    println("Everything is ok, continue!")
-                    break;
-                }
+        if (splitClients) {
+            waitForSeparateConnections()
+        }
+
+        metricRecorder.snapshot() // To reset start counter
+        sendRunner.stop(false)
+        recvRunner.stop(false)
+    }
+
+    private fun waitForSeparateConnections() {
+        while (true) {
+            if (connectionMonitor.shouldRestart()) {
+                Thread.sleep(5000)
+                sendRunner.stop(true)
+                recvRunner.stop(true)
+                sendRunner = ClientRunner(hostname, port, sender, duration)
+                recvRunner = ClientRunner(hostname, if (useMultiplePorts) port + 1 else port, recveiver, duration)
+                recvRunner.start()
+                sendRunner.start()
+            } else {
+                break;
             }
         }
-        metricRecorder.snapshot() // To reset start counter
-        sendRunner.stop()
-        recvRunner.stop()
     }
 
     fun snapshot(): MetricSnapshot {

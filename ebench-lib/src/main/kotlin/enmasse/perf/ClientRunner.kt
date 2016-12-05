@@ -61,9 +61,10 @@ open class ClientRunner(val hostname: String, val port: Int, val clientHandler: 
         reactor.stop()
     }
 
-    fun stop() {
-        running = false
-        thr.interrupt()
+    fun stop(interrupt: Boolean) {
+        if (interrupt) {
+            running = false
+        }
         thr.join()
     }
 
