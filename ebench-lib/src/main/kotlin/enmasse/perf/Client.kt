@@ -16,21 +16,42 @@
 
 package enmasse.perf
 
+import java.time.Year
+
 /**
  * @author lulf
  */
-class Client(val hostname:String, val port:Int, address:String, msgSize: Int, val duration: Int, val waitTime: Int, val useMultiplePorts: Boolean, val presettled: Boolean): Runnable
+class Client(val hostname:String, val port:Int, address:String, msgSize: Int, val duration: Int, val waitTime: Int, val useMultiplePorts: Boolean, val presettled: Boolean, val splitClients: Boolean): Runnable
 {
     val metricRecorder = MetricRecorder(50, 2000)
-    val deliveryTracker = DeliveryTracker(metricRecorder)
-    val sender = Sender(address, msgSize, waitTime, deliveryTracker, presettled)
-    val recveiver = Receiver(address, msgSize, deliveryTracker, presettled)
-    val sendRunner = ClientRunner(hostname, port, sender, duration)
-    val recvRunner = ClientRunner(hostname, if (useMultiplePorts) port + 1 else port, recveiver, duration)
+    val deliveryTracker = DeliveryTracker(metricRecorder, presettled)
+    val connectionMonitor = createConnectionMonitor(splitClients)
+
+    val sender = Sender("ebench-send", address, msgSize, waitTime, deliveryTracker, connectionMonitor)
+    val recveiver = Receiver("ebench-recv", address, msgSize, deliveryTracker, connectionMonitor)
+    @Volatile var sendRunner = ClientRunner(hostname, port, sender, duration)
+    @Volatile var recvRunner = ClientRunner(hostname, if (useMultiplePorts) port + 1 else port, recveiver, duration)
 
     override fun run() {
-        recvRunner.start()
-        sendRunner.start()
+        while (true) {
+            recvRunner.start()
+            sendRunner.start()
+
+            println("Entering barrier")
+            if (splitClients) {
+                if (connectionMonitor.shouldRestart()) {
+                    println("Should restart!")
+                    Thread.sleep(5000)
+                    sendRunner.stop()
+                    recvRunner.stop()
+                    sendRunner = ClientRunner(hostname, port, sender, duration)
+                    recvRunner = ClientRunner(hostname, if (useMultiplePorts) port + 1 else port, recveiver, duration)
+                } else {
+                    println("Everything is ok, continue!")
+                    break;
+                }
+            }
+        }
         metricRecorder.snapshot() // To reset start counter
         sendRunner.stop()
         recvRunner.stop()
@@ -43,6 +64,24 @@ class Client(val hostname:String, val port:Int, address:String, msgSize: Int, va
             metricRecorder.snapshot(sendRunner.endTime())
         }
 
+    }
+
+    private fun  createConnectionMonitor(splitClients: Boolean): ConnectionMonitor {
+        if (splitClients) {
+            return ClientSplitter("ebench-send", "ebench-recv")
+        } else {
+            return DummyMonitor()
+        }
+    }
+}
+
+class DummyMonitor : ConnectionMonitor {
+    override fun registerConnection(clientId: String, containerId: String): Boolean {
+        return true
+    }
+
+    override fun shouldRestart(): Boolean {
+        return false
     }
 }
 

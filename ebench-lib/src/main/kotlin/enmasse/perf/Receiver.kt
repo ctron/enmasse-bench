@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicLong
 /**
  * @author lulf
  */
-class Receiver(val address: String, msgSize: Int, val deliveryTracker: DeliveryTracker, val presettled: Boolean): BaseHandler() {
+class Receiver(val clientId: String, val address: String, msgSize: Int, val deliveryTracker: DeliveryTracker, val connectionMonitor: ConnectionMonitor): BaseHandler() {
 
     val buffer = ByteArray(msgSize)
 
@@ -41,9 +41,20 @@ class Receiver(val address: String, msgSize: Int, val deliveryTracker: DeliveryT
 
     override fun onConnectionInit(event: Event) {
         val conn = event.connection
-        conn.container = "ebench-recv"
+        conn.container = clientId
+
+        conn.open()
+    }
+
+    override fun onConnectionRemoteOpen(e: Event) {
+        println("Receiver connected to router ${e.connection.remoteContainer}")
+        if (!connectionMonitor.registerConnection(clientId, e.connection.remoteContainer)) {
+            println("Aborting receiver connection")
+            e.connection.close()
+        }
+        val conn = e.connection
         val session = conn.session()
-        val recv = session.receiver("ebench-recv")
+        val recv = session.receiver(clientId)
 
         val source = org.apache.qpid.proton.amqp.messaging.Source()
         source.address = address
@@ -57,13 +68,8 @@ class Receiver(val address: String, msgSize: Int, val deliveryTracker: DeliveryT
         target.durable = TerminusDurability.NONE
         recv.target = target
 
-        conn.open()
         session.open()
         recv.open()
-    }
-
-    override fun onConnectionRemoteOpen(e: Event) {
-        println("Receiver connected to router ${e.connection.remoteContainer}")
     }
 
     override fun onTransportError(e: Event) {
@@ -80,11 +86,7 @@ class Receiver(val address: String, msgSize: Int, val deliveryTracker: DeliveryT
 
             recv.advance()
             delivery.disposition(Accepted())
-            if (presettled) {
-                deliveryTracker.onDelivery(delivery);
-            } else {
-                delivery.settle()
-            }
+            deliveryTracker.onReceiverDelivery(delivery)
         }
     }
 }

@@ -42,7 +42,8 @@ fun main(args: Array<String>) {
     options.addOption(createOption("r", "reportInterval", "Interval when reporting statistics"))
     options.addOption(createOption("m", "mode", "Mode (standalone, script or collector)"))
     options.addOption(createOption("w", "waitTime", "Wait time between sending messages (in milliseconds)"))
-    options.addOption(createOption("t", "presettle", "Send presettled messages"))
+    options.addOption(createOptionNoArg("t", "presettle", "Send presettled messages"))
+    options.addOption(createOptionNoArg("i", "splitClients", "Attempt to force sender/receivers to different container endpoints"))
 
     try {
         val cmd = parser.parse(options, args)
@@ -57,6 +58,7 @@ fun main(args: Array<String>) {
         val mode = cmd.getOptionValue("m", "standalone")
         val waitTime = if (cmd.hasOption("w")) Integer.parseInt(cmd.getOptionValue("w")) else 0
         val presettled = cmd.hasOption("t")
+        val splitClients = cmd.hasOption("i")
 
         if (basePort == null && port == null) {
             throw IllegalArgumentException("Either -p or -b option must be specified")
@@ -65,7 +67,7 @@ fun main(args: Array<String>) {
         val useMultiplePorts = basePort != null
         var currentPort:Int = if (useMultiplePorts) basePort!! else port!!
         val clientHandles = 1.rangeTo(clients).map { i ->
-            val cli = Client(hostname, currentPort, address, msgSize, duration, waitTime, useMultiplePorts, presettled)
+            val cli = Client(hostname, currentPort, address, msgSize, duration, waitTime, useMultiplePorts, presettled, splitClients)
             if (useMultiplePorts) {
                 currentPort+= 2
             }
@@ -88,6 +90,12 @@ fun main(args: Array<String>) {
 fun createOption(name: String, longName: String, desc: String): Option {
     return Option.builder(name).longOpt(longName)
             .hasArg()
+            .desc(desc)
+            .build()
+}
+
+fun createOptionNoArg(name: String, longName: String, desc: String): Option {
+    return Option.builder(name).longOpt(longName)
             .desc(desc)
             .build()
 }

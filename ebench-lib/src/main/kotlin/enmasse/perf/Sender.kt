@@ -27,7 +27,7 @@ import org.apache.qpid.proton.reactor.Handshaker
 /**
  * @author lulf
  */
-class Sender(val address: String, val msgSize: Int, val waitTime: Int, val deliveryTracker: DeliveryTracker, val presettled: Boolean): BaseHandler() {
+class Sender(val clientId: String, val address: String, val msgSize: Int, val waitTime: Int, val deliveryTracker: DeliveryTracker, val connectionMonitor: ConnectionMonitor): BaseHandler() {
     private var nextTag = 0
     private val msgBuffer: ByteArray = ByteArray(1024)
     private var msgLen = 0
@@ -44,22 +44,8 @@ class Sender(val address: String, val msgSize: Int, val waitTime: Int, val deliv
 
     override fun onConnectionInit(event: Event) {
         val conn = event.connection
-        conn.container = "ebench-send"
-        val session = conn.session()
-        sender = session.sender("ebench-send")
-
-        val target = org.apache.qpid.proton.amqp.messaging.Target()
-        target.address = address
-        sender!!.target = target
-
+        conn.container = clientId
         conn.open()
-        session.open()
-        sender!!.open()
-
-        if (waitTime > 0) {
-            println("Scheduling wait")
-            event.reactor.schedule(waitTime, this)
-        }
     }
 
     override fun onTimerTask(e: Event) {
@@ -71,6 +57,24 @@ class Sender(val address: String, val msgSize: Int, val waitTime: Int, val deliv
 
     override fun onConnectionRemoteOpen(e: Event) {
         println("Sender connected to router ${e.connection.remoteContainer}")
+        if (!connectionMonitor.registerConnection(clientId, e.connection.remoteContainer)) {
+            println("Aborting sender connection")
+            e.connection.close()
+        }
+        val session = e.connection.session()
+        sender = session.sender(clientId)
+
+        val target = org.apache.qpid.proton.amqp.messaging.Target()
+        target.address = address
+        sender!!.target = target
+
+        session.open()
+        sender!!.open()
+
+        if (waitTime > 0) {
+            println("Scheduling wait")
+            e.reactor.schedule(waitTime, this)
+        }
     }
 
     override fun onDelivery(e: Event) {
@@ -96,10 +100,6 @@ class Sender(val address: String, val msgSize: Int, val waitTime: Int, val deliv
         val dlv = snd.delivery(tag)
         deliveryTracker.onSend(dlv)
         snd.send(msgBuffer, 0, msgLen)
-        if (presettled) {
-            dlv.settle()
-        }
-        //println("Ds: ${dlv}")
         snd.advance()
     }
 }
