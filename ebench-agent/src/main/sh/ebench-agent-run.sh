@@ -5,5 +5,11 @@ if [ "$BENCH_WAIT_TIME" != "" ]
 then
     ARGS="$ARGS -w $BENCH_WAIT_TIME"
 fi
+
+if [ "$BENCH_SPLIT_CLIENTS" != "" ]
+then
+    ARGS="$ARGS -i"
+fi
+
 echo "Launching with args: $ARGS"
 ./ebench-agent/bin/ebench-agent $ARGS
