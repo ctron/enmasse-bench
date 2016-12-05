@@ -65,7 +65,6 @@ fun main(args: Array<String>) {
             throw IllegalArgumentException("Either -p or -b option must be specified")
         }
         val clientId = Inet4Address.getLocalHost().hostName
-        println("Using ${clientId} as container id")
 
         val useMultiplePorts = basePort != null
         var currentPort:Int = if (useMultiplePorts) basePort!! else port!!

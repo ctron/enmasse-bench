@@ -23,12 +23,14 @@ class Client(val clientId:String, val hostname:String, val port:Int, address:Str
 {
     val metricRecorder = MetricRecorder(50, 2000)
     val deliveryTracker = DeliveryTracker(metricRecorder, presettled)
+    val senderId = "${clientId}-sender"
+    val receiverId = "${clientId}-receiver"
     val connectionMonitor = createConnectionMonitor(splitClients)
 
-    val sender = Sender(clientId + "-sender", address, msgSize, waitTime, deliveryTracker, connectionMonitor)
-    val recveiver = Receiver(clientId + "-receiver", address, msgSize, deliveryTracker, connectionMonitor)
+    val sender = Sender(senderId, address, msgSize, waitTime, deliveryTracker, connectionMonitor)
+    val receiver = Receiver(receiverId, address, msgSize, deliveryTracker, connectionMonitor)
     @Volatile var sendRunner = ClientRunner(hostname, port, sender, duration)
-    @Volatile var recvRunner = ClientRunner(hostname, if (useMultiplePorts) port + 1 else port, recveiver, duration)
+    @Volatile var recvRunner = ClientRunner(hostname, if (useMultiplePorts) port + 1 else port, receiver, duration)
 
     override fun run() {
         recvRunner.start()
@@ -49,7 +51,7 @@ class Client(val clientId:String, val hostname:String, val port:Int, address:Str
                 sendRunner.stop(true)
                 recvRunner.stop(true)
                 sendRunner = ClientRunner(hostname, port, sender, duration)
-                recvRunner = ClientRunner(hostname, if (useMultiplePorts) port + 1 else port, recveiver, duration)
+                recvRunner = ClientRunner(hostname, if (useMultiplePorts) port + 1 else port, receiver, duration)
                 recvRunner.start()
                 sendRunner.start()
             } else {
@@ -69,7 +71,7 @@ class Client(val clientId:String, val hostname:String, val port:Int, address:Str
 
     private fun  createConnectionMonitor(splitClients: Boolean): ConnectionMonitor {
         if (splitClients) {
-            return ClientSplitter("ebench-send", "ebench-recv")
+            return ClientSplitter(senderId, receiverId)
         } else {
             return DummyMonitor()
         }
