@@ -17,6 +17,7 @@
 package enmasse.perf
 
 import org.apache.commons.cli.*
+import java.net.Inet4Address
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -63,11 +64,13 @@ fun main(args: Array<String>) {
         if (basePort == null && port == null) {
             throw IllegalArgumentException("Either -p or -b option must be specified")
         }
+        val clientId = Inet4Address.getLocalHost().hostName
+        println("Using ${clientId} as container id")
 
         val useMultiplePorts = basePort != null
         var currentPort:Int = if (useMultiplePorts) basePort!! else port!!
         val clientHandles = 1.rangeTo(clients).map { i ->
-            val cli = Client(hostname, currentPort, address, msgSize, duration, waitTime, useMultiplePorts, presettled, splitClients)
+            val cli = Client(clientId, hostname, currentPort, address, msgSize, duration, waitTime, useMultiplePorts, presettled, splitClients)
             if (useMultiplePorts) {
                 currentPort+= 2
             }

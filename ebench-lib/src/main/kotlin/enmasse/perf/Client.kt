@@ -19,14 +19,14 @@ package enmasse.perf
 /**
  * @author lulf
  */
-class Client(val hostname:String, val port:Int, address:String, msgSize: Int, val duration: Int, val waitTime: Int, val useMultiplePorts: Boolean, val presettled: Boolean, val splitClients: Boolean): Runnable
+class Client(val clientId:String, val hostname:String, val port:Int, address:String, msgSize: Int, val duration: Int, val waitTime: Int, val useMultiplePorts: Boolean, val presettled: Boolean, val splitClients: Boolean): Runnable
 {
     val metricRecorder = MetricRecorder(50, 2000)
     val deliveryTracker = DeliveryTracker(metricRecorder, presettled)
     val connectionMonitor = createConnectionMonitor(splitClients)
 
-    val sender = Sender("ebench-send", address, msgSize, waitTime, deliveryTracker, connectionMonitor)
-    val recveiver = Receiver("ebench-recv", address, msgSize, deliveryTracker, connectionMonitor)
+    val sender = Sender(clientId + "-sender", address, msgSize, waitTime, deliveryTracker, connectionMonitor)
+    val recveiver = Receiver(clientId + "-receiver", address, msgSize, deliveryTracker, connectionMonitor)
     @Volatile var sendRunner = ClientRunner(hostname, port, sender, duration)
     @Volatile var recvRunner = ClientRunner(hostname, if (useMultiplePorts) port + 1 else port, recveiver, duration)
 
