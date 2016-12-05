@@ -58,7 +58,9 @@ fun startServer(vertx: Vertx, collector: Collector) {
                 if (snapshot != null) {
                     val headers = response.headers()
                     headers.set("Content-Type", "application/json")
-                    response.write(formatSnapshotJson(snapshot))
+                    val data = formatSnapshotJson(snapshot)
+                    headers.set("Content-Length", "${data.length}")
+                    response.write(data)
                 }
                 response.setStatusCode(HttpResponseStatus.OK.code())
                 response.end()
