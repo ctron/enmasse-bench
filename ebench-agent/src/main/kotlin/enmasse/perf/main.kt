@@ -33,52 +33,64 @@ import java.util.concurrent.TimeUnit
 fun main(args: Array<String>) {
     val parser = DefaultParser()
     val options = Options()
-    options.addOption(createRequiredOption("c", "clients", "Number of clients"))
-    options.addOption(createRequiredOption("h", "hostname", "Hostname of server"))
     options.addOption(createRequiredOption("a", "address", "Address to use for messages"))
-    options.addOption(createRequiredOption("s", "messageSize", "Size of messages"))
     options.addOption(createRequiredOption("d", "duration", "Number of seconds to run test"))
-    options.addOption(createOption("p", "port", "Port to use on server"))
-    options.addOption(createOption("b", "basePort", "Use baseport and separate ports for sender/receiver and for multiple clients"))
-    options.addOption(createOption("r", "reportInterval", "Interval when reporting statistics"))
-    options.addOption(createOption("m", "mode", "Mode (standalone, script or collector)"))
+    options.addOption(createOption("f", "format", "Output format(pretty, script or none. None means that the agent will send data by AMQP)"))
+    options.addOption(createRequiredOption("h", "hosts", "<host>:<port> of server(s). If multiple servers are specified, senders and receivers will be assigned round robin"))
+    options.addOption(createOption("i", "interval", "Interval when reporting statistics in pretty or script modes"))
+    options.addOption(createRequiredOption("m", "messageSize", "Size of messages"))
+    options.addOption(createOptionNoArg("p", "presettle", "Send presettled messages"))
+    options.addOption(createRequiredOption("r", "senders", "Number of senders"))
+    options.addOption(createRequiredOption("s", "senders", "Number of senders"))
     options.addOption(createOption("w", "waitTime", "Wait time between sending messages (in milliseconds)"))
-    options.addOption(createOptionNoArg("t", "presettle", "Send presettled messages"))
-    options.addOption(createOptionNoArg("i", "splitClients", "Attempt to force sender/receivers to different container endpoints"))
+    options.addOption(createOptionNoArg("c", "splitClients", "Attempt to force sender/receivers to different AMQP container endpoints by reconnecting"))
 
     try {
         val cmd = parser.parse(options, args)
-        val clients = Integer.parseInt(cmd.getOptionValue("c"))
-        val hostname = cmd.getOptionValue("h")
-        val basePort = if (cmd.hasOption("b")) Integer.parseInt(cmd.getOptionValue("b")) else null
-        val port = if (cmd.hasOption("p")) Integer.parseInt(cmd.getOptionValue("p")) else null
+        val senders = Integer.parseInt(cmd.getOptionValue("s"))
+        val receivers = Integer.parseInt(cmd.getOptionValue("r"))
+        val hostnames = cmd.getOptionValue("h").split(",")
         val address = cmd.getOptionValue("a")
-        val msgSize = Integer.parseInt(cmd.getOptionValue("s"))
+        val msgSize = Integer.parseInt(cmd.getOptionValue("m"))
         val duration = Integer.parseInt(cmd.getOptionValue("d"))
-        val printInterval = if (cmd.hasOption("r")) java.lang.Long.parseLong(cmd.getOptionValue("r")) else null
-        val mode = cmd.getOptionValue("m", "standalone")
+        val printInterval = if (cmd.hasOption("i")) java.lang.Long.parseLong(cmd.getOptionValue("i")) else null
+        val format = cmd.getOptionValue("f", "pretty")
         val waitTime = if (cmd.hasOption("w")) Integer.parseInt(cmd.getOptionValue("w")) else 0
-        val presettled = cmd.hasOption("t")
-        val splitClients = cmd.hasOption("i")
+        val presettled = cmd.hasOption("p")
+        val splitClients = cmd.hasOption("c")
 
-        if (basePort == null && port == null) {
-            throw IllegalArgumentException("Either -p or -b option must be specified")
+        if (hostnames == null) {
+            throw IllegalArgumentException("Hostnames must be specified")
         }
         val clientId = Inet4Address.getLocalHost().hostName
 
-        val useMultiplePorts = basePort != null
-        var currentPort:Int = if (useMultiplePorts) basePort!! else port!!
-        val clientHandles = 1.rangeTo(clients).map { i ->
-            val cli = Client(clientId, hostname, currentPort, address, msgSize, duration, waitTime, useMultiplePorts, presettled, splitClients)
-            if (useMultiplePorts) {
-                currentPort+= 2
+        val senderIds:List<String> = 1.rangeTo(senders).map { i -> "${clientId}-sender-${i}" }
+        val receiverIds:List<String> = 1.rangeTo(receivers).map { i -> "${clientId}-receiver-${i}" }
+
+        val connectionMonitor = createConnectionMonitor(splitClients, senderIds.plus(receiverIds))
+        var hostIt = hostnames.iterator()
+        val senderHandles = senderIds.map { senderId ->
+            var hostname = hostIt.next()
+            if (hostname == null) {
+                hostIt = hostnames.iterator()
+                hostname = hostIt.next()
             }
-            cli
+            Sender(senderId, hostname, address, msgSize, duration, waitTime, presettled, connectionMonitor)
         }
+
+        val receiverHandlers = receiverIds.map { receiverId ->
+            var hostname = hostIt.next()
+            if (hostname == null) {
+                hostIt = hostnames.iterator()
+                hostname = hostIt.next()
+            }
+            Receiver(receiverId, hostname, address, msgSize, duration, connectionMonitor)
+        }
+        val clientHandles = senderHandles.plus(receiverHandlers)
         val collector =
-                if (mode.equals("collector")) RemoteCollector(clientHandles)
-                else if (mode.equals("script")) TimedCollector(clientHandles, printInterval, ::printSnapshotScriptable)
-                else TimedCollector(clientHandles, printInterval, ::printSnapshotPretty)
+                if (format.equals("none")) RemoteCollector(senderHandles)
+                else if (format.equals("script")) TimedCollector(senderHandles, printInterval, ::printSnapshotScriptable)
+                else TimedCollector(senderHandles, printInterval, ::printSnapshotPretty)
 
         runBenchmark(clientHandles, duration, collector)
     } catch (e: ParseException) {
@@ -88,6 +100,13 @@ fun main(args: Array<String>) {
         System.exit(1)
     }
 }
+    private fun  createConnectionMonitor(splitClients: Boolean, clientIds: List<String>): ConnectionMonitor {
+        if (splitClients) {
+            return ClientSplitter(clientIds)
+        } else {
+            return DummyMonitor()
+        }
+    }
 
 fun createOption(name: String, longName: String, desc: String): Option {
     return Option.builder(name).longOpt(longName)

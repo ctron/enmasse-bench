@@ -16,44 +16,46 @@
 
 package enmasse.perf
 
+import org.apache.qpid.proton.engine.BaseHandler
+
 /**
  * @author lulf
  */
-class Client(val clientId:String, val hostname:String, val port:Int, address:String, msgSize: Int, val duration: Int, val waitTime: Int, val useMultiplePorts: Boolean, val presettled: Boolean, val splitClients: Boolean): Runnable
+abstract class Client(val hostname:String, val duration: Int, val connectionMonitor: ConnectionMonitor): Runnable, BaseHandler()
 {
     val metricRecorder = MetricRecorder(50, 2000)
-    val deliveryTracker = DeliveryTracker(metricRecorder, presettled)
-    val senderId = "${clientId}-sender"
-    val receiverId = "${clientId}-receiver"
-    val connectionMonitor = createConnectionMonitor(splitClients)
+    @Volatile var runner = ClientRunner(getHost(hostname), getPort(hostname), this, duration)
 
-    val sender = Sender(senderId, address, msgSize, waitTime, deliveryTracker, connectionMonitor)
-    val receiver = Receiver(receiverId, address, msgSize, deliveryTracker, connectionMonitor)
-    @Volatile var sendRunner = ClientRunner(hostname, port, sender, duration)
-    @Volatile var recvRunner = ClientRunner(hostname, if (useMultiplePorts) port + 1 else port, receiver, duration)
+    private fun getHost(hostname: String): String {
+        val parts = hostname.split(":")
+        return parts[0];
+    }
+
+    private fun getPort(hostname: String): Int {
+        val parts = hostname.split(":")
+        if (parts.size > 0) {
+            return Integer.parseInt(parts[1]);
+        } else {
+            return 5672;
+        }
+    }
 
     override fun run() {
-        recvRunner.start()
-        sendRunner.start()
+        runner.start()
 
-        if (splitClients) {
-            waitForSeparateConnections()
-        }
+        waitForSeparateConnections()
 
         metricRecorder.snapshot() // To reset start counter
-        sendRunner.stop(false)
-        recvRunner.stop(false)
+
+        runner.stop(false)
     }
 
     private fun waitForSeparateConnections() {
         while (true) {
             if (connectionMonitor.shouldRestart()) {
-                sendRunner.stop(true)
-                recvRunner.stop(true)
-                sendRunner = ClientRunner(hostname, port, sender, duration)
-                recvRunner = ClientRunner(hostname, if (useMultiplePorts) port + 1 else port, receiver, duration)
-                recvRunner.start()
-                sendRunner.start()
+                runner.stop(true)
+                runner = ClientRunner(getHost(hostname), getPort(hostname), this, duration)
+                runner.start()
             } else {
                 break;
             }
@@ -61,21 +63,15 @@ class Client(val clientId:String, val hostname:String, val port:Int, address:Str
     }
 
     fun snapshot(): MetricSnapshot {
-        return if (sendRunner.running()) {
+        return if (runner.running()) {
             metricRecorder.snapshot()
         } else {
-            metricRecorder.snapshot(sendRunner.endTime())
+            metricRecorder.snapshot(runner.endTime())
         }
 
     }
 
-    private fun  createConnectionMonitor(splitClients: Boolean): ConnectionMonitor {
-        if (splitClients) {
-            return ClientSplitter(senderId, receiverId)
-        } else {
-            return DummyMonitor()
-        }
-    }
+
 }
 
 class DummyMonitor : ConnectionMonitor {

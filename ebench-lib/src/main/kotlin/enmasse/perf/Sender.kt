@@ -19,7 +19,6 @@ package enmasse.perf
 import org.apache.qpid.proton.Proton
 import org.apache.qpid.proton.amqp.Binary
 import org.apache.qpid.proton.amqp.messaging.AmqpValue
-import org.apache.qpid.proton.engine.BaseHandler
 import org.apache.qpid.proton.engine.Event
 import org.apache.qpid.proton.reactor.FlowController
 import org.apache.qpid.proton.reactor.Handshaker
@@ -27,7 +26,17 @@ import org.apache.qpid.proton.reactor.Handshaker
 /**
  * @author lulf
  */
-class Sender(val clientId: String, val address: String, val msgSize: Int, val waitTime: Int, val deliveryTracker: DeliveryTracker, val connectionMonitor: ConnectionMonitor): BaseHandler() {
+class Sender(val clientId: String,
+             hostname: String,
+             val address: String,
+             msgSize: Int,
+             duration: Int,
+             val waitTime: Int,
+             presettled: Boolean,
+             connectionMonitor: ConnectionMonitor):
+        Client(hostname, duration, connectionMonitor) {
+
+    val deliveryTracker = DeliveryTracker(metricRecorder, presettled)
     private var nextTag = 0
     private val msgBuffer: ByteArray = ByteArray(1024)
     private var msgLen = 0

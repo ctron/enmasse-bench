@@ -30,7 +30,8 @@ import java.util.concurrent.atomic.AtomicLong
 /**
  * @author lulf
  */
-class Receiver(val clientId: String, val address: String, msgSize: Int, val deliveryTracker: DeliveryTracker, val connectionMonitor: ConnectionMonitor): BaseHandler() {
+class Receiver(val clientId: String, hostname: String, val address: String, msgSize: Int, duration: Int, connectionMonitor: ConnectionMonitor):
+        Client(hostname, duration, connectionMonitor) {
 
     val buffer = ByteArray(msgSize)
 
@@ -86,7 +87,7 @@ class Receiver(val clientId: String, val address: String, msgSize: Int, val deli
 
             recv.advance()
             delivery.disposition(Accepted())
-            deliveryTracker.onReceiverDelivery(delivery)
+            delivery.settle()
         }
     }
 }

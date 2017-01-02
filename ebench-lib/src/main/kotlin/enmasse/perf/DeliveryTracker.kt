@@ -15,18 +15,12 @@ class DeliveryTracker(val metricRecorder: MetricRecorder, val  presettled: Boole
         }
     }
 
-    fun onReceiverDelivery(delivery: Delivery) {
+    fun onSend(delivery: Delivery) {
         if (presettled) {
+            delivery.settle()
             onDelivery(delivery)
         } else {
-            delivery.settle()
-        }
-    }
-
-    fun onSend(delivery: Delivery) {
-        unsetteled.put(delivery.tag, System.nanoTime());
-        if (presettled) {
-            delivery.settle()
+            unsetteled.put(delivery.tag, System.nanoTime());
         }
     }
 }

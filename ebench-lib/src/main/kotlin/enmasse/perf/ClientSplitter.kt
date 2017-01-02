@@ -5,19 +5,20 @@ import java.util.concurrent.CyclicBarrier
 /**
  * Decides if clients should be split
  */
-class ClientSplitter (val senderId: String, val receiverId: String): ConnectionMonitor {
+class ClientSplitter (clientIds: List<String>): ConnectionMonitor {
 
     @Volatile var isEqual: Boolean = false
-    val barrier: CyclicBarrier = CyclicBarrier(3, Runnable {
-        isEqual = idMap[senderId].equals(idMap[receiverId])
-        println("Barrier completed, sender id ${idMap[senderId]}, receiver id ${idMap[receiverId]}")
+    val barrier: CyclicBarrier = CyclicBarrier(clientIds.size + 1, Runnable {
+        isEqual = java.util.HashSet<String>(idMap.values).size == 1
+        println("Barrier completed, id map: ${idMap}")
     })
 
     val idMap = java.util.HashMap<String, String>()
 
     init {
-        idMap.put(senderId, senderId)
-        idMap.put(receiverId, receiverId)
+        for (clientId in clientIds) {
+            idMap.put(clientId, clientId)
+        }
     }
 
     override fun registerConnection(clientId: String, containerId: String): Boolean {
