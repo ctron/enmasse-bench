@@ -88,6 +88,7 @@ fun main(args: Array<String>) {
                 else if (format.equals("script")) TimedCollector(senderHandles, printInterval, ::printSnapshotScriptable)
                 else TimedCollector(senderHandles, printInterval, ::printSnapshotPretty)
 
+        Runtime.getRuntime().addShutdownHook(Thread(Runnable { collector.stop() }))
         runBenchmark(clientHandles, duration, collector)
     } catch (e: ParseException) {
         println("Unable to parse arguments: ${args}")
@@ -144,5 +145,4 @@ fun runBenchmark(clients: List<Client>, duration: Int, metricCollector: MetricCo
     metricCollector.start()
     executor.shutdown()
     executor.awaitTermination(duration + 10L, TimeUnit.SECONDS)
-    metricCollector.stop()
 }
