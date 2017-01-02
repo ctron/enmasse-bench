@@ -45,10 +45,6 @@ open class ClientRunner(val hostname: String, val port: Int, val clientHandler: 
         running = false
     }
 
-    override fun onReactorFinal(e: Event) {
-        endTime = System.currentTimeMillis()
-    }
-
     override fun onTransportError(e: Event) {
         println("Transport error: ${e.transport.condition.description}")
         running = false
@@ -58,12 +54,15 @@ open class ClientRunner(val hostname: String, val port: Int, val clientHandler: 
         reactor.timeout = 3141
         reactor.start()
         while (reactor.process() && running) { }
+
         reactor.stop()
+        endTime = System.currentTimeMillis()
     }
 
     fun stop(interrupt: Boolean) {
         if (interrupt) {
             running = false
+            reactor.wakeup()
         }
         thr.join()
     }

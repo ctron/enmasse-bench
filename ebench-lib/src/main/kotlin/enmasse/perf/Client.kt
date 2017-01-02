@@ -33,7 +33,7 @@ abstract class Client(val hostname:String, val duration: Int, val connectionMoni
 
     private fun getPort(hostname: String): Int {
         val parts = hostname.split(":")
-        if (parts.size > 0) {
+        if (parts != null && parts.size > 1) {
             return Integer.parseInt(parts[1]);
         } else {
             return 5672;
