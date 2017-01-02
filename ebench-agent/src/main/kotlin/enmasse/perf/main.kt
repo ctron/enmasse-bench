@@ -40,7 +40,7 @@ fun main(args: Array<String>) {
     options.addOption(createOption("i", "interval", "Interval when reporting statistics in pretty or script modes"))
     options.addOption(createRequiredOption("m", "messageSize", "Size of messages"))
     options.addOption(createOptionNoArg("p", "presettle", "Send presettled messages"))
-    options.addOption(createRequiredOption("r", "senders", "Number of senders"))
+    options.addOption(createRequiredOption("r", "receivers", "Number of receivers"))
     options.addOption(createRequiredOption("s", "senders", "Number of senders"))
     options.addOption(createOption("w", "waitTime", "Wait time between sending messages (in milliseconds)"))
     options.addOption(createOptionNoArg("c", "splitClients", "Attempt to force sender/receivers to different AMQP container endpoints by reconnecting"))
@@ -49,7 +49,7 @@ fun main(args: Array<String>) {
         val cmd = parser.parse(options, args)
         val senders = Integer.parseInt(cmd.getOptionValue("s"))
         val receivers = Integer.parseInt(cmd.getOptionValue("r"))
-        val hostnames = cmd.getOptionValue("h").split(",")
+        val hostnames:List<String> = parseHostNames(cmd.getOptionValue("h"))
         val address = cmd.getOptionValue("a")
         val msgSize = Integer.parseInt(cmd.getOptionValue("m"))
         val duration = Integer.parseInt(cmd.getOptionValue("d"))
@@ -59,9 +59,6 @@ fun main(args: Array<String>) {
         val presettled = cmd.hasOption("p")
         val splitClients = cmd.hasOption("c")
 
-        if (hostnames == null) {
-            throw IllegalArgumentException("Hostnames must be specified")
-        }
         val clientId = Inet4Address.getLocalHost().hostName
 
         val senderIds:List<String> = 1.rangeTo(senders).map { i -> "${clientId}-sender-${i}" }
@@ -70,20 +67,19 @@ fun main(args: Array<String>) {
         val connectionMonitor = createConnectionMonitor(splitClients, senderIds.plus(receiverIds))
         var hostIt = hostnames.iterator()
         val senderHandles = senderIds.map { senderId ->
-            var hostname = hostIt.next()
-            if (hostname == null) {
+            if (!hostIt.hasNext()) {
                 hostIt = hostnames.iterator()
-                hostname = hostIt.next()
             }
+            var hostname = hostIt.next()
             Sender(senderId, hostname, address, msgSize, duration, waitTime, presettled, connectionMonitor)
         }
 
+        hostIt = hostnames.iterator()
         val receiverHandlers = receiverIds.map { receiverId ->
-            var hostname = hostIt.next()
-            if (hostname == null) {
+            if (!hostIt.hasNext()) {
                 hostIt = hostnames.iterator()
-                hostname = hostIt.next()
             }
+            var hostname = hostIt.next()
             Receiver(receiverId, hostname, address, msgSize, duration, connectionMonitor)
         }
         val clientHandles = senderHandles.plus(receiverHandlers)
@@ -100,7 +96,19 @@ fun main(args: Array<String>) {
         System.exit(1)
     }
 }
-    private fun  createConnectionMonitor(splitClients: Boolean, clientIds: List<String>): ConnectionMonitor {
+
+fun  parseHostNames(hostnames: String?): List<String> {
+    if (hostnames == null) {
+        throw IllegalArgumentException("Hostnames must be specified")
+    }
+    if (hostnames.contains(",")) {
+        return hostnames.split(",")
+    } else {
+        return listOf(hostnames)
+    }
+}
+
+private fun  createConnectionMonitor(splitClients: Boolean, clientIds: List<String>): ConnectionMonitor {
         if (splitClients) {
             return ClientSplitter(clientIds)
         } else {

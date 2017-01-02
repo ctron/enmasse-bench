@@ -114,9 +114,15 @@ class Sender(val clientId: String,
     fun sendData(snd: org.apache.qpid.proton.engine.Sender) {
         val tag:ByteArray = java.lang.String.valueOf(nextTag++).toByteArray()
         val dlv = snd.delivery(tag)
-        deliveryTracker.onSend(dlv)
-        snd.send(msgBuffer, 0, msgLen)
-        snd.advance()
+        try {
+            deliveryTracker.onSend(dlv)
+            snd.send(msgBuffer, 0, msgLen)
+            deliveryTracker.onSent(dlv)
+            snd.advance()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            System.exit(0)
+        }
     }
 }
 
