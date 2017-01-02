@@ -35,7 +35,7 @@ fun main(args: Array<String>) {
     val options = Options()
     options.addOption(createRequiredOption("a", "address", "Address to use for messages"))
     options.addOption(createRequiredOption("d", "duration", "Number of seconds to run test"))
-    options.addOption(createOption("f", "format", "Output format(pretty, script or none. None means that the agent will send data by AMQP)"))
+    options.addOption(createOption("f", "format", "Output format(pretty, script or none. None means that the agent can be polled using http)"))
     options.addOption(createRequiredOption("h", "hosts", "<host>:<port> of server(s). If multiple servers are specified, senders and receivers will be assigned round robin"))
     options.addOption(createOption("i", "interval", "Interval when reporting statistics in pretty or script modes"))
     options.addOption(createRequiredOption("m", "messageSize", "Size of messages"))
