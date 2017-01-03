@@ -10,7 +10,7 @@ senders/receivers to increase the load.
 
 ## Running
     tar xvf ebench-agent/build/distributions/ebench-agent.tar
-    ./ebench-agent/bin/ebench-agent -h 127.0.0.1 -c 1 -a amqp-test -p 5674 -d 60 -p 10 -s 128  
+    ./ebench-agent/bin/ebench-agent -h 127.0.0.1:5674 -s 1 -r 1 -a amqp-test -d 60 -i 10 -m 128
 
 
 The agent can also be run as part of an EnMasse cluster, where multiple agents can be scaled by
