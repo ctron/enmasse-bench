@@ -83,10 +83,12 @@ fun main(args: Array<String>) {
             Receiver(receiverId, hostname, address, msgSize, duration, connectionMonitor)
         }
         val clientHandles = senderHandles.plus(receiverHandlers)
+
+        val metricHandles = if (senderHandles.size > 0) senderHandles else receiverHandlers
         val collector =
-                if (format.equals("none")) RemoteCollector(senderHandles)
-                else if (format.equals("script")) TimedCollector(senderHandles, printInterval, ::printSnapshotScriptable)
-                else TimedCollector(senderHandles, printInterval, ::printSnapshotPretty)
+                if (format.equals("none")) RemoteCollector(metricHandles)
+                else if (format.equals("script")) TimedCollector(metricHandles, printInterval, ::printSnapshotScriptable)
+                else TimedCollector(metricHandles, printInterval, ::printSnapshotPretty)
 
         Runtime.getRuntime().addShutdownHook(Thread(Runnable { collector.stop() }))
         runBenchmark(clientHandles, duration, collector)

@@ -88,6 +88,7 @@ class Receiver(val clientId: String, hostname: String, val address: String, msgS
             recv.advance()
             delivery.disposition(Accepted())
             delivery.settle()
+            metricRecorder.record()
         }
     }
 }
