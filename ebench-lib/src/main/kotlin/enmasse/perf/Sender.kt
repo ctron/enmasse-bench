@@ -38,7 +38,7 @@ class Sender(val clientId: String,
 
     val deliveryTracker = DeliveryTracker(metricRecorder, presettled)
     private var nextTag = 0
-    private val msgBuffer: ByteArray = ByteArray(1024)
+    private val msgBuffer: ByteArray = ByteArray(msgSize + 1024)
     private var msgLen = 0
     private var sender:org.apache.qpid.proton.engine.Sender? = null
     @Volatile private var aborted = true
