@@ -23,6 +23,7 @@ import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpClientOptions
 import java.util.*
+import java.util.concurrent.CompletableFuture
 
 /**
  * @author Ulf Lilleengen
@@ -32,6 +33,11 @@ class Collector(val vertx: Vertx, val monitor: AgentMonitor): TimerTask() {
     @Volatile var latestSnapshot: Pair<Int, MetricSnapshot>? = null;
 
     override fun run() {
+        snapshot()
+    }
+
+    fun snapshot(): java.util.concurrent.Future<Pair<Int, MetricSnapshot>> {
+        val promise = CompletableFuture<Pair<Int, MetricSnapshot>>()
         try {
             val agents = monitor.listAgents()
             println("Fetching metrics from : ${agents}")
@@ -59,14 +65,17 @@ class Collector(val vertx: Vertx, val monitor: AgentMonitor): TimerTask() {
                         merged = mergeSnapshots(merged, snapshot)
                     }
                     latestSnapshot = Pair<Int, MetricSnapshot>(snapshots.size, merged)
-                    printSnapshotPretty(snapshots.size, merged)
+                    promise.complete(latestSnapshot)
                 } else {
+                    promise.completeExceptionally(ar.cause())
                     println("Error fetching result from agents: ${ar.cause().message}")
                 }
             }
         } catch (e: Exception) {
             println("Error fetching metrics: ${e.message}")
+            promise.completeExceptionally(e)
         }
+        return promise
     }
 
     fun latest(): Pair<Int, MetricSnapshot>? {

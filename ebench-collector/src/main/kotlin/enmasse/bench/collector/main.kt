@@ -49,11 +49,15 @@ fun main(args: Array<String>) {
             startServer(vertx, collector);
         } else {
             for (c in 0 until numCollects) {
-                Thread.sleep(interval)
-                collector.run()
-                val snapshot = collector.latest()
-                val data = formatSnapshotJson(snapshot!!)
-                println(data)
+                Thread.sleep(TimeUnit.SECONDS.toMillis(interval))
+                val snapshot = collector.snapshot()
+                try {
+                    val snap = snapshot.get(5, TimeUnit.MINUTES)
+                    val data = formatSnapshotJson(snap)
+                    println(data)
+                } catch (e: Exception){
+                    println("Unable to get snapshot within timeout, ignoring")
+                }
             }
 
         }
