@@ -29,7 +29,6 @@ import java.util.concurrent.TimeUnit
  */
 fun main(args: Array<String>) {
     val parser = DefaultParser()
-    val timer = Executors.newScheduledThreadPool(1)
     val options = Options()
     options.addOption(createRequiredOption("i", "interval", "Collection interval (in seconds)"))
     options.addOption(createOption("I", "interactive", "Runs the collector in interactive mode. The argument specifices how many times to collect"))
@@ -45,6 +44,7 @@ fun main(args: Array<String>) {
         val collector = Collector(vertx, agentMonitor)
 
         if (numCollects == 0) {
+            val timer = Executors.newScheduledThreadPool(1)
             timer.scheduleAtFixedRate(collector, interval, interval, TimeUnit.SECONDS)
             startServer(vertx, collector);
         } else {
@@ -59,7 +59,7 @@ fun main(args: Array<String>) {
                     println("Unable to get snapshot within timeout, ignoring")
                 }
             }
-
+            vertx.close()
         }
     } catch (e: ParseException) {
         println("Unable to parse arguments: ${args}")
