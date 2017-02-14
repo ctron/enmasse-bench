@@ -32,16 +32,31 @@ fun main(args: Array<String>) {
     val timer = Executors.newScheduledThreadPool(1)
     val options = Options()
     options.addOption(createRequiredOption("i", "interval", "Collection interval (in seconds)"))
+    options.addOption(createOption("I", "interactive", "Runs the collector in interactive mode. The argument specifices how many times to collect"))
     options.addOption(createOption("a", "agents", "Comma-separated list of agent <host>:<port> (default: auto-discover)"))
 
     try {
         val cmd = parser.parse(options, args)
         val interval = java.lang.Long.parseLong(cmd.getOptionValue("i"))
         val agentMonitor = if (cmd.hasOption("a")) StaticAgentMonitor(parseAgents(cmd.getOptionValue("a"))) else OpenshiftAgentMonitor()
+        val numCollects = Integer.parseInt(cmd.getOptionValue("I", "0"))
         val vertx = Vertx.vertx()
+
         val collector = Collector(vertx, agentMonitor)
-        timer.scheduleAtFixedRate(collector, interval, interval, TimeUnit.SECONDS)
-        startServer(vertx, collector);
+
+        if (numCollects == 0) {
+            timer.scheduleAtFixedRate(collector, interval, interval, TimeUnit.SECONDS)
+            startServer(vertx, collector);
+        } else {
+            for (c in 0 until numCollects) {
+                Thread.sleep(interval)
+                collector.run()
+                val snapshot = collector.latest()
+                val data = formatSnapshotJson(snapshot!!)
+                println(data)
+            }
+
+        }
     } catch (e: ParseException) {
         println("Unable to parse arguments: ${args}")
         val formatter = HelpFormatter()
@@ -83,8 +98,9 @@ fun  formatSnapshotJson(snapshot: Pair<Int, MetricSnapshot>): String {
     latencies.put("75p", snap.percentile(0.75))
     latencies.put("90p", snap.percentile(0.9))
     latencies.put("95p", snap.percentile(0.95))
+    latencies.put("99p", snap.percentile(0.99))
     json.put("latencies", latencies)
-    return json.encode()
+    return json.encodePrettily()
 }
 
 fun parseAgents(agentsString: String): List<AgentInfo> {
