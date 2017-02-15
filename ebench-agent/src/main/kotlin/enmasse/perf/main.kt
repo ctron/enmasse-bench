@@ -74,7 +74,6 @@ fun main(args: Array<String>) {
             Sender(senderId, hostname, address, msgSize, duration, waitTime, presettled, connectionMonitor)
         }
 
-        hostIt = hostnames.iterator()
         val receiverHandlers = receiverIds.map { receiverId ->
             if (!hostIt.hasNext()) {
                 hostIt = hostnames.iterator()
