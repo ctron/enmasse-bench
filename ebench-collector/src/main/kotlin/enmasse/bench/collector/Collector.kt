@@ -22,6 +22,7 @@ import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpClientOptions
+import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.concurrent.CompletableFuture
 
@@ -33,6 +34,8 @@ class Collector(val vertx: Vertx, val monitor: AgentMonitor): TimerTask() {
     @Volatile var latestSnapshot: Pair<Int, MetricSnapshot>? = null;
 
     override fun run() {
+        val agents = monitor.listAgents()
+        println("Fetching metrics from : ${agents}")
         snapshot()
     }
 
@@ -40,7 +43,6 @@ class Collector(val vertx: Vertx, val monitor: AgentMonitor): TimerTask() {
         val promise = CompletableFuture<Pair<Int, MetricSnapshot>>()
         try {
             val agents = monitor.listAgents()
-            println("Fetching metrics from : ${agents}")
             CompositeFuture.all(agents.map { agent ->
                 val future: Future<MetricSnapshot> = Future.future()
                 client.getNow(agent.port, agent.hostname, "/", { response ->
