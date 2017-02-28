@@ -18,6 +18,7 @@ package enmasse.perf
 
 import org.apache.qpid.proton.Proton
 import org.apache.qpid.proton.amqp.Binary
+import org.apache.qpid.proton.amqp.Symbol
 import org.apache.qpid.proton.amqp.messaging.AmqpValue
 import org.apache.qpid.proton.engine.Event
 import org.apache.qpid.proton.reactor.FlowController
@@ -29,6 +30,7 @@ import org.apache.qpid.proton.reactor.Handshaker
 class Sender(val clientId: String,
              hostname: String,
              val address: String,
+             val isTopic: Boolean,
              msgSize: Int,
              duration: Int,
              val waitTime: Int,
@@ -82,6 +84,9 @@ class Sender(val clientId: String,
 
         val target = org.apache.qpid.proton.amqp.messaging.Target()
         target.address = address
+        if (isTopic) {
+            target.setCapabilities(Symbol.getSymbol("topic"))
+        }
         sender!!.target = target
 
         session.open()

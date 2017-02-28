@@ -44,6 +44,7 @@ fun main(args: Array<String>) {
     options.addOption(createRequiredOption("s", "senders", "Number of senders"))
     options.addOption(createOption("w", "waitTime", "Wait time between sending messages (in milliseconds)"))
     options.addOption(createOptionNoArg("c", "splitClients", "Attempt to force sender/receivers to different AMQP container endpoints by reconnecting"))
+    options.addOption(createOptionNoArg("t", "topic", "Treat the address as a topic"))
 
     try {
         val cmd = parser.parse(options, args)
@@ -58,6 +59,7 @@ fun main(args: Array<String>) {
         val waitTime = if (cmd.hasOption("w")) Integer.parseInt(cmd.getOptionValue("w")) else 0
         val presettled = cmd.hasOption("p")
         val splitClients = cmd.hasOption("c")
+        val isTopic = cmd.hasOption("t")
 
         val clientId = Inet4Address.getLocalHost().hostName
 
@@ -71,7 +73,7 @@ fun main(args: Array<String>) {
                 hostIt = hostnames.iterator()
             }
             var hostname = hostIt.next()
-            Sender(senderId, hostname, address, msgSize, duration, waitTime, presettled, connectionMonitor)
+            Sender(senderId, hostname, address, isTopic, msgSize, duration, waitTime, presettled, connectionMonitor)
         }
 
         val receiverHandlers = receiverIds.map { receiverId ->
@@ -79,7 +81,7 @@ fun main(args: Array<String>) {
                 hostIt = hostnames.iterator()
             }
             var hostname = hostIt.next()
-            Receiver(receiverId, hostname, address, msgSize, duration, connectionMonitor)
+            Receiver(receiverId, hostname, address, isTopic, msgSize, duration, connectionMonitor)
         }
         val clientHandles = senderHandles.plus(receiverHandlers)
 

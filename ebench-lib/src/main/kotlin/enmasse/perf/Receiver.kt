@@ -16,6 +16,7 @@
 
 package enmasse.perf
 
+import org.apache.qpid.proton.amqp.Symbol
 import org.apache.qpid.proton.amqp.UnsignedInteger
 import org.apache.qpid.proton.amqp.messaging.Accepted
 import org.apache.qpid.proton.amqp.messaging.TerminusDurability
@@ -30,7 +31,7 @@ import java.util.concurrent.atomic.AtomicLong
 /**
  * @author lulf
  */
-class Receiver(val clientId: String, hostname: String, val address: String, msgSize: Int, duration: Int, connectionMonitor: ConnectionMonitor):
+class Receiver(val clientId: String, hostname: String, val address: String, val isTopic: Boolean, msgSize: Int, duration: Int, connectionMonitor: ConnectionMonitor):
         Client(hostname, duration, connectionMonitor) {
 
     val buffer = ByteArray(msgSize)
@@ -59,6 +60,9 @@ class Receiver(val clientId: String, hostname: String, val address: String, msgS
 
         val source = org.apache.qpid.proton.amqp.messaging.Source()
         source.address = address
+        if (isTopic) {
+            source.setCapabilities(Symbol.getSymbol("topic"))
+        }
         source.timeout = UnsignedInteger(0)
         source.durable = TerminusDurability.NONE
         recv.source = source
