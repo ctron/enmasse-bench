@@ -6,6 +6,7 @@ dependencies {
 	compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     compile "commons-cli:commons-cli:${commons_cli_version}"
     compile "com.openshift:openshift-restclient-java:${openshift_restclient_version}"
+    compile 'com.github.EnMasseProject:common-lib:master-SNAPSHOT'
 }
 
 apply plugin: 'application'

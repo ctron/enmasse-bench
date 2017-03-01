@@ -21,7 +21,6 @@ import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import org.apache.commons.cli.*
-import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -49,7 +48,7 @@ fun main(args: Array<String>) {
         val labelList = if (cmd.hasOption("l")) cmd.getOptionValue("l") else ""
 
         val labelMap = parseLables(labelList)
-        val agentMonitor = if (cmd.hasOption("a")) StaticAgentMonitor(parseAgents(cmd.getOptionValue("a"))) else OpenshiftAgentMonitor(labelMap)
+        val agentMonitor = if (cmd.hasOption("a")) StaticAgentMonitor(parseAgents(cmd.getOptionValue("a"))) else OpenshiftAgentMonitor(vertx, labelMap)
 
         val collector = Collector(vertx, agentMonitor, interval)
 

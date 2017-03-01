@@ -16,39 +16,27 @@
 
 package enmasse.bench.collector
 
-import com.openshift.restclient.ClientBuilder
-import com.openshift.restclient.IClient
-import com.openshift.restclient.ResourceKind
-import com.openshift.restclient.authorization.TokenAuthorizationStrategy
-import com.openshift.restclient.model.IPod
-import java.io.File
-import java.nio.file.Files
+import enmasse.discovery.DiscoveryClient
+import enmasse.discovery.DiscoveryListener
+import enmasse.discovery.Host
+import io.vertx.core.Vertx
 import java.util.*
 
-class OpenshiftAgentMonitor(val labelMap: java.util.HashMap<String, String>): AgentMonitor {
-    val client: IClient
+class OpenshiftAgentMonitor(vertx: Vertx, val labelMap: java.util.HashMap<String, String>): AgentMonitor, DiscoveryListener {
+    private val client: DiscoveryClient
+    @Volatile private var currentAgents:List<AgentInfo> = emptyList()
     init {
-        val openshiftUri = "https://${System.getenv("KUBERNETES_SERVICE_HOST")}:${System.getenv("KUBERNETES_SERVICE_PORT")}"
-        client = ClientBuilder(openshiftUri).authorizationStrategy(TokenAuthorizationStrategy(getAuthenticationToken())).build()
+        client = DiscoveryClient("podsense", labelMap, Optional.empty());
+        client.addListener(this)
+        vertx.deployVerticle(client)
     }
 
     override fun listAgents(): List<AgentInfo> {
-        val pods = client.list<IPod>(ResourceKind.POD, getOpenshiftNamespace(), labelMap)
-        return pods.map { pod -> AgentInfo(pod.ip, pod.containerPorts.iterator().next().containerPort) }
+        return currentAgents
     }
 
-}
+    override fun hostsChanged(hostSet: MutableSet<Host>) {
+        currentAgents = hostSet.map { host -> AgentInfo(host.hostname, 8080) }
+    }
 
-private val SERVICEACCOUNT_PATH = "/var/run/secrets/kubernetes.io/serviceaccount"
-
-private fun getOpenshiftNamespace(): String {
-    return readFile(File(SERVICEACCOUNT_PATH, "namespace"))
-}
-
-private fun getAuthenticationToken():String {
-    return readFile(File(SERVICEACCOUNT_PATH, "token"))
-}
-
-private fun readFile(file: File): String {
-    return String(Files.readAllBytes(file.toPath()))
 }
