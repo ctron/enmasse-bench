@@ -1,5 +1,6 @@
-FROM java:8
+FROM fedora:25
 
+RUN dnf -y install java-1.8.0-openjdk gettext && dnf clean all -y
 ADD build/distributions/ebench-agent.tar /
 ADD src/main/sh/ebench-agent-run.sh /
 
