@@ -21,6 +21,7 @@ import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import org.apache.commons.cli.*
+import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -33,13 +34,22 @@ fun main(args: Array<String>) {
     options.addOption(createRequiredOption("i", "interval", "Collection interval (in seconds)"))
     options.addOption(createOption("I", "interactive", "Runs the collector in interactive mode. The argument specifices how many times to collect"))
     options.addOption(createOption("a", "agents", "Comma-separated list of agent <host>:<port> (default: auto-discover)"))
+    options.addOption(createOption("l", "agentLabels", "Comma-separated list of agent labels (key1=value1,key2=value2)"))
 
     try {
         val cmd = parser.parse(options, args)
         val interval = java.lang.Long.parseLong(cmd.getOptionValue("i"))
-        val agentMonitor = if (cmd.hasOption("a")) StaticAgentMonitor(parseAgents(cmd.getOptionValue("a"))) else OpenshiftAgentMonitor()
         val numCollects = Integer.parseInt(cmd.getOptionValue("I", "0"))
         val vertx = Vertx.vertx()
+
+        if (!cmd.hasOption("a") && !cmd.hasOption("l")) {
+            throw IllegalArgumentException("Need either -a or -l to be set")
+        }
+
+        val labelList = if (cmd.hasOption("l")) cmd.getOptionValue("l") else ""
+
+        val labelMap = parseLables(labelList)
+        val agentMonitor = if (cmd.hasOption("a")) StaticAgentMonitor(parseAgents(cmd.getOptionValue("a"))) else OpenshiftAgentMonitor(labelMap)
 
         val collector = Collector(vertx, agentMonitor)
 
@@ -67,6 +77,16 @@ fun main(args: Array<String>) {
         formatter.printHelp("ebench-collector", options)
         System.exit(1)
     }
+}
+
+fun  parseLables(labelList: String): java.util.HashMap<String, String> {
+    val m = java.util.HashMap<String, String>()
+    val pairs = labelList.split(",")
+    for (pair in pairs) {
+        val keyval = pair.split("=")
+        m.put(keyval.get(0), keyval.get(1))
+    }
+    return m
 }
 
 fun startServer(vertx: Vertx, collector: Collector) {

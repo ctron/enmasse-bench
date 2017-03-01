@@ -25,7 +25,7 @@ import java.io.File
 import java.nio.file.Files
 import java.util.*
 
-class OpenshiftAgentMonitor: AgentMonitor {
+class OpenshiftAgentMonitor(val labelMap: java.util.HashMap<String, String>): AgentMonitor {
     val client: IClient
     init {
         val openshiftUri = "https://${System.getenv("KUBERNETES_SERVICE_HOST")}:${System.getenv("KUBERNETES_SERVICE_PORT")}"
@@ -33,10 +33,7 @@ class OpenshiftAgentMonitor: AgentMonitor {
     }
 
     override fun listAgents(): List<AgentInfo> {
-        val labels = LinkedHashMap<String, String>()
-        labels.put("role", "benchmark")
-        labels.put("type", "agent")
-        val pods = client.list<IPod>(ResourceKind.POD, getOpenshiftNamespace(), labels)
+        val pods = client.list<IPod>(ResourceKind.POD, getOpenshiftNamespace(), labelMap)
         return pods.map { pod -> AgentInfo(pod.ip, pod.containerPorts.iterator().next().containerPort) }
     }
 
