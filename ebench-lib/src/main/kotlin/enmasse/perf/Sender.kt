@@ -21,8 +21,11 @@ import org.apache.qpid.proton.amqp.Binary
 import org.apache.qpid.proton.amqp.Symbol
 import org.apache.qpid.proton.amqp.messaging.AmqpValue
 import org.apache.qpid.proton.engine.Event
+import org.apache.qpid.proton.engine.Sender
 import org.apache.qpid.proton.reactor.FlowController
 import org.apache.qpid.proton.reactor.Handshaker
+import java.nio.ByteBuffer
+import java.nio.channels.Pipe
 
 /**
  * @author lulf
@@ -33,15 +36,17 @@ class Sender(val clientId: String,
              val isTopic: Boolean,
              msgSize: Int,
              duration: Int,
-             val waitTime: Int,
              presettled: Boolean,
+             val rateController: RateController,
              connectionMonitor: ConnectionMonitor):
         Client(hostname, duration, connectionMonitor) {
 
     val deliveryTracker = DeliveryTracker(metricRecorder, presettled)
+    private val buffer = ByteBuffer.allocate(8)
     private var nextTag = 0
     private val msgBuffer: ByteArray = ByteArray(msgSize + 1024)
     private var msgLen = 0
+    private var localCredits = 0L;
     private var sender:org.apache.qpid.proton.engine.Sender? = null
     @Volatile private var aborted = true
 
@@ -59,13 +64,6 @@ class Sender(val clientId: String,
         val conn = event.connection
         conn.container = clientId
         conn.open()
-    }
-
-    override fun onTimerTask(e: Event) {
-        if (waitTime != null) {
-            sendData(sender!!)
-            e.reactor.schedule(waitTime, this)
-        }
     }
 
     fun aborted(): Boolean {
@@ -92,9 +90,10 @@ class Sender(val clientId: String,
         session.open()
         sender!!.open()
 
-        if (waitTime > 0) {
-            println("Scheduling wait")
-            e.reactor.schedule(waitTime, this)
+        if (rateController.channel() != null) {
+            val selectable = e.reactor.selectable()
+            setHandler(selectable, this)
+            e.reactor.update(selectable)
         }
     }
 
@@ -105,24 +104,44 @@ class Sender(val clientId: String,
         }
     }
 
+    override fun onSelectableInit(e: Event) {
+        val selectable = e.selectable
+        selectable.channel = rateController.channel()
+        selectable.isReading = true
+        e.reactor.update(selectable)
+    }
+
+    override fun onSelectableReadable(e: Event) {
+        val selectable = e.selectable
+        val channel:Pipe.SourceChannel = selectable.channel as Pipe.SourceChannel
+
+        val amount = channel.read(buffer)
+        buffer.flip()
+        localCredits = buffer.long
+        buffer.clear()
+        sendData(sender!!)
+    }
+
     override fun onLinkFlow(e: Event) {
         val snd = e.link as org.apache.qpid.proton.engine.Sender
-        if (waitTime == 0 && snd.credit > 0) {
-            sendData(snd)
-        }
+        sendData(snd)
     }
 
     override fun onTransportError(e: Event) {
         println("Transport error: ${e.transport.condition.description}")
     }
 
-    fun sendData(snd: org.apache.qpid.proton.engine.Sender) {
-        val tag:ByteArray = java.lang.String.valueOf(nextTag++).toByteArray()
-        val dlv = snd.delivery(tag)
-        deliveryTracker.onSend(dlv)
-        snd.send(msgBuffer, 0, msgLen)
-        deliveryTracker.onSent(dlv)
-        snd.advance()
+    fun sendData(snd: Sender) {
+        if (snd.credit > 0 && (rateController.channel() == null || localCredits > 0)) {
+            val tag: ByteArray = java.lang.String.valueOf(nextTag++).toByteArray()
+            val dlv = snd.delivery(tag)
+            deliveryTracker.onSend(dlv)
+            snd.send(msgBuffer, 0, msgLen)
+            deliveryTracker.onSent(dlv)
+            snd.advance()
+            rateController.hasSent()
+            localCredits--
+        }
     }
 }
 

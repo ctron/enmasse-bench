@@ -42,21 +42,21 @@ fun main(args: Array<String>) {
     options.addOption(createOptionNoArg("p", "presettle", "Send presettled messages"))
     options.addOption(createRequiredOption("r", "receivers", "Number of receivers"))
     options.addOption(createRequiredOption("s", "senders", "Number of senders"))
-    options.addOption(createOption("w", "waitTime", "Wait time between sending messages (in milliseconds)"))
     options.addOption(createOptionNoArg("c", "splitClients", "Attempt to force sender/receivers to different AMQP container endpoints by reconnecting"))
     options.addOption(createOptionNoArg("t", "topic", "Treat the address as a topic"))
+    options.addOption(createOption("n", "sendRate", "The rate at which the senders should send (per second)"))
 
     try {
         val cmd = parser.parse(options, args)
         val senders = Integer.parseInt(cmd.getOptionValue("s"))
         val receivers = Integer.parseInt(cmd.getOptionValue("r"))
+        val sendRate = if (cmd.hasOption("n")) java.lang.Long.parseLong(cmd.getOptionValue("n")) else 0L
         val hostnames:List<String> = parseHostNames(cmd.getOptionValue("h"))
         val address = cmd.getOptionValue("a")
         val msgSize = Integer.parseInt(cmd.getOptionValue("m"))
         val duration = Integer.parseInt(cmd.getOptionValue("d"))
         val printInterval = if (cmd.hasOption("i")) java.lang.Long.parseLong(cmd.getOptionValue("i")) else null
         val format = cmd.getOptionValue("f", "pretty")
-        val waitTime = if (cmd.hasOption("w")) Integer.parseInt(cmd.getOptionValue("w")) else 0
         val presettled = cmd.hasOption("p")
         val splitClients = cmd.hasOption("c")
         val isTopic = cmd.hasOption("t")
@@ -73,7 +73,15 @@ fun main(args: Array<String>) {
                 hostIt = hostnames.iterator()
             }
             var hostname = hostIt.next()
-            Sender(senderId, hostname, address, isTopic, msgSize, duration, waitTime, presettled, connectionMonitor)
+            var rateController:RateController = MaxRateController()
+            if (sendRate != 0L) {
+                val scheduler = Executors.newScheduledThreadPool(1)
+                rateController = PidRateController(1.0, 0.01, sendRate)
+                scheduler.scheduleAtFixedRate({
+                    rateController.updateState()
+                }, 0, 1, TimeUnit.SECONDS);
+            }
+            Sender(senderId, hostname, address, isTopic, msgSize, duration, presettled, rateController, connectionMonitor)
         }
 
         val receiverHandlers = receiverIds.map { receiverId ->
