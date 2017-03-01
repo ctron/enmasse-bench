@@ -30,14 +30,14 @@ import java.util.concurrent.TimeUnit
 /**
  * @author Ulf Lilleengen
  */
-class Collector(val vertx: Vertx, val monitor: AgentMonitor): TimerTask() {
+class Collector(val vertx: Vertx, val monitor: AgentMonitor, val interval: Long): TimerTask() {
     val client = vertx.createHttpClient(HttpClientOptions().setConnectTimeout(2000).setIdleTimeout(5000))
     @Volatile var latestSnapshot: Pair<Int, MetricSnapshot>? = null;
 
     override fun run() {
         val agents = monitor.listAgents()
         println("Fetching metrics from : ${agents}")
-        val snap = snapshot().get(1, TimeUnit.MINUTES)
+        val snap = snapshot().get(interval, TimeUnit.SECONDS)
         println(formatSnapshotJson(snap));
     }
 

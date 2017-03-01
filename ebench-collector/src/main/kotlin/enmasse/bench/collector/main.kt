@@ -51,7 +51,7 @@ fun main(args: Array<String>) {
         val labelMap = parseLables(labelList)
         val agentMonitor = if (cmd.hasOption("a")) StaticAgentMonitor(parseAgents(cmd.getOptionValue("a"))) else OpenshiftAgentMonitor(labelMap)
 
-        val collector = Collector(vertx, agentMonitor)
+        val collector = Collector(vertx, agentMonitor, interval)
 
         if (numCollects == 0) {
             val timer = Executors.newScheduledThreadPool(1)
