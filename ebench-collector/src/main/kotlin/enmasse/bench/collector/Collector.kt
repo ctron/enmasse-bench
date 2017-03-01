@@ -25,6 +25,7 @@ import io.vertx.core.http.HttpClientOptions
 import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
 
 /**
  * @author Ulf Lilleengen
@@ -36,7 +37,8 @@ class Collector(val vertx: Vertx, val monitor: AgentMonitor): TimerTask() {
     override fun run() {
         val agents = monitor.listAgents()
         println("Fetching metrics from : ${agents}")
-        snapshot()
+        val snap = snapshot().get(1, TimeUnit.MINUTES)
+        println(formatSnapshotJson(snap));
     }
 
     fun snapshot(): java.util.concurrent.Future<Pair<Int, MetricSnapshot>> {
