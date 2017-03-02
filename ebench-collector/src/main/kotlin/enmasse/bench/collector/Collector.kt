@@ -35,10 +35,14 @@ class Collector(val vertx: Vertx, val monitor: AgentMonitor, val interval: Long)
     @Volatile var latestSnapshot: Pair<Int, MetricSnapshot>? = null;
 
     override fun run() {
-        val agents = monitor.listAgents()
-        println("Fetching metrics from : ${agents}")
-        val snap = snapshot().get(interval, TimeUnit.SECONDS)
-        println(formatSnapshotJson(snap));
+        try {
+            val agents = monitor.listAgents()
+            println("Attempting to fetch metrics from : ${agents}")
+            val snap = snapshot().get(interval, TimeUnit.SECONDS)
+            println(formatSnapshotJson(snap));
+        } catch (e: Exception) {
+            println("Error fetching metrics, ignoring")
+        }
     }
 
     fun snapshot(): java.util.concurrent.Future<Pair<Int, MetricSnapshot>> {
@@ -59,6 +63,7 @@ class Collector(val vertx: Vertx, val monitor: AgentMonitor, val interval: Long)
                         val snapshot = deserializeMetricSnapshot(totalBuffer)
                         future.complete(snapshot)
                     }
+                    response.exceptionHandler { e -> future.fail(e) }
                 })
                 future
             }).setHandler { ar ->
