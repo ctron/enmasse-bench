@@ -48,7 +48,7 @@ fun main(args: Array<String>) {
         val labelList = if (cmd.hasOption("l")) cmd.getOptionValue("l") else ""
 
         val labelMap = parseLables(labelList)
-        val agentMonitor = if (cmd.hasOption("a")) StaticAgentMonitor(parseAgents(cmd.getOptionValue("a"))) else OpenshiftAgentMonitor(vertx, labelMap)
+        val agentMonitor = if (cmd.hasOption("a")) StaticAgentMonitor(parseAgents(cmd.getOptionValue("a"))) else OpenshiftAgentMonitor(labelMap)
 
         val collector = Collector(vertx, agentMonitor, interval)
 

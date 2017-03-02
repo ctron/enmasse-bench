@@ -16,27 +16,15 @@
 
 package enmasse.bench.collector
 
-import enmasse.discovery.DiscoveryClient
-import enmasse.discovery.DiscoveryListener
-import enmasse.discovery.Host
-import io.vertx.core.Vertx
-import java.util.*
+import io.fabric8.kubernetes.client.DefaultKubernetesClient
+import io.fabric8.kubernetes.client.KubernetesClient
 
-class OpenshiftAgentMonitor(vertx: Vertx, val labelMap: java.util.HashMap<String, String>): AgentMonitor, DiscoveryListener {
-    private val client: DiscoveryClient
-    @Volatile private var currentAgents:List<AgentInfo> = emptyList()
-    init {
-        client = DiscoveryClient("podsense", labelMap, Optional.empty());
-        client.addListener(this)
-        vertx.deployVerticle(client)
-    }
+class OpenshiftAgentMonitor(val labelMap: Map<String, String>): AgentMonitor {
+    private val client: KubernetesClient = DefaultKubernetesClient()
 
     override fun listAgents(): List<AgentInfo> {
-        return currentAgents
+        return client.pods().withLabels(labelMap).list().items
+                .filter { pod -> pod.status.phase.equals("Running") && pod.status.podIP != null && pod.status.podIP != "" }
+                .map { pod -> AgentInfo(pod.status.podIP, pod.spec.containers[0].ports[0].containerPort) }
     }
-
-    override fun hostsChanged(hostSet: MutableSet<Host>) {
-        currentAgents = hostSet.map { host -> AgentInfo(host.hostname, 8080) }
-    }
-
 }

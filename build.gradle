@@ -9,7 +9,7 @@ buildscript {
     ext.commons_math_version = '3.6.1'
     ext.vertx_version = '3.3.0'
     ext.jackson_version = '2.7.4'
-    ext.openshift_restclient_version = '4.0.5.Final'
+    ext.kubernetesClientVersion = '2.0.3'
 
     repositories {
         mavenCentral()
@@ -27,6 +27,5 @@ subprojects {
     repositories {
         mavenLocal()
         mavenCentral()
-        maven { url "https://jitpack.io" }
     }
 }
