@@ -106,7 +106,7 @@ fun startServer(vertx: Vertx, collector: Collector) {
             .listen(8080);
     }
 
-fun  formatSnapshotJson(snapshot: Pair<Int, MetricSnapshot>): String {
+fun formatSnapshotJson(snapshot: Pair<Int, MetricSnapshot>): String {
     val json = JsonObject()
     val snap = snapshot.second
     json.put("clients", snapshot.first)
@@ -117,15 +117,14 @@ fun  formatSnapshotJson(snapshot: Pair<Int, MetricSnapshot>): String {
     latencies.put("avg", snap.averageLatency())
     latencies.put("min", snap.minLatency())
     latencies.put("max", snap.maxLatency())
-    latencies.put("50p", snap.percentile(0.5))
-    latencies.put("95p", snap.percentile(0.95))
-    latencies.put("99p", snap.percentile(0.99))
-    latencies.put("99.9p", snap.percentile(0.999))
-    latencies.put("99.99p", snap.percentile(0.9999))
-    latencies.put("99.999p", snap.percentile(0.99999))
-    latencies.put("99.9999p", snap.percentile(0.999999))
-    latencies.put("99.99999p", snap.percentile(0.9999999))
-    latencies.put("99.999999p", snap.percentile(0.99999999))
+    latencies.put("50p", snap.percentile(50.0))
+    latencies.put("95p", snap.percentile(95.0))
+    latencies.put("99p", snap.percentile(99.0))
+    latencies.put("99.9p", snap.percentile(99.9))
+    latencies.put("99.99p", snap.percentile(99.99))
+    latencies.put("99.999p", snap.percentile(99.999))
+    latencies.put("99.9999p", snap.percentile(99.9999))
+    latencies.put("99.99999p", snap.percentile(99.99999))
     json.put("latencies", latencies)
     return json.encodePrettily()
 }
