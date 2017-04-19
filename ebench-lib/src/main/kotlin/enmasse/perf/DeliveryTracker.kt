@@ -5,6 +5,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 class DeliveryTracker(val metricRecorder: MetricRecorder, val presettled: Boolean) {
     val unsetteled: ConcurrentHashMap<ByteArray, Long> = ConcurrentHashMap<ByteArray, Long>()
+
     fun onDelivery(delivery: Delivery) {
         val endTime = System.nanoTime()
         val startTime = unsetteled.remove(delivery.tag)
@@ -13,16 +14,9 @@ class DeliveryTracker(val metricRecorder: MetricRecorder, val presettled: Boolea
         }
     }
 
-    fun onSend(delivery: Delivery) {
+    fun onSend(delivery: Delivery, startTime: Long) {
         if (!presettled) {
-            unsetteled.put(delivery.tag, System.nanoTime());
-        }
-    }
-
-    fun onSent(delivery: Delivery) {
-        if (presettled) {
-            delivery.settle()
-            metricRecorder.record()
+            unsetteled.put(delivery.tag, startTime);
         }
     }
 }

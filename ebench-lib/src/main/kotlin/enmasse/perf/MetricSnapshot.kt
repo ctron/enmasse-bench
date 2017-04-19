@@ -17,107 +17,83 @@
 package enmasse.perf
 
 import io.vertx.core.buffer.Buffer
-import io.vertx.core.json.JsonArray
-import io.vertx.core.json.JsonObject
+import org.HdrHistogram.AbstractHistogram
+import org.HdrHistogram.Histogram
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
+import java.util.concurrent.TimeUnit
+import java.util.zip.Deflater
+import java.util.zip.Inflater
 
-data class MetricSnapshot(val numMessages: Long, val duration: Long, val totalLatency: Long, val buckets: List<Bucket>, val minLatency: Long, val maxLatency: Long) {
+data class MetricSnapshot(val histogram: AbstractHistogram) {
     fun throughput(): Double {
-        return numMessages / (duration / 1000.toDouble())
+        return histogram.totalCount / ((histogram.endTimeStamp - histogram.startTimeStamp) / 1000.toDouble())
     }
 
-    fun averageLatency(): Long {
-        return if (numMessages > 0) totalLatency / numMessages else 0
+    private fun toMillis(value: Double): Double {
+        return value / TimeUnit.MILLISECONDS.toNanos(1)
     }
 
-    fun percentile(p: Double): Long {
-        if (totalLatency == 0L) {
-            return 0
-        }
-        var entriesToCount = (numMessages * p).toLong()
-        if (entriesToCount <= 0) {
-            return 0L
-        }
-        for (bucket in buckets) {
-            entriesToCount -= bucket.count()
-            if (entriesToCount <= 0) {
-                return bucket.totalLatency() / bucket.count()
-            }
-        }
-        throw IllegalStateException("Was never able to count required entries with p = ${p}")
+    fun averageLatency(): Double {
+        return toMillis(histogram.mean)
     }
 
+    fun minLatency(): Double {
+        return toMillis(histogram.minValue.toDouble())
+    }
+
+    fun maxLatency(): Double {
+        return toMillis(histogram.maxValueAsDouble)
+    }
+
+    fun duration(): Long {
+        return histogram.endTimeStamp - histogram.startTimeStamp
+    }
+
+    fun numMessages(): Long {
+        return histogram.totalCount
+    }
+
+    fun percentile(p: Double): Double {
+        return toMillis(histogram.getValueAtPercentile(p).toDouble())
+    }
 }
 
-val emptyMetricSnapshot: MetricSnapshot = MetricSnapshot(0, 0, 0, emptyList(), Long.MAX_VALUE, Long.MIN_VALUE)
+val emptyMetricSnapshot: MetricSnapshot = MetricSnapshot(Histogram(5))
 
 fun mergeSnapshots(a: MetricSnapshot, b: MetricSnapshot): MetricSnapshot {
-    return MetricSnapshot(a.numMessages + b.numMessages,
-            Math.max(a.duration, b.duration),
-            a.totalLatency + b.totalLatency,
-            mergeBuckets(a.buckets, b.buckets),
-            Math.min(a.minLatency, b.minLatency),
-            Math.max(a.maxLatency, b.maxLatency))
-}
-
-fun mergeBuckets(a: List<Bucket>, b: List<Bucket>): List<Bucket> {
-    return if (a.size == 0) {
-        b
-    } else if (b.size == 0) {
-        a
-    } else {
-        a.mapIndexed { i, bucket ->
-            val copy = Bucket(bucket.range)
-            copy.increment(bucket.totalLatency() + b.get(i).totalLatency(), bucket.count() + b.get(i).count())
-            copy
-        }
-    }
+    val histCopy = a.histogram.copy()
+    histCopy.add(b.histogram)
+    return MetricSnapshot(histCopy)
 }
 
 fun serializeMetricSnapshot(buffer: Buffer, snapshot: MetricSnapshot) {
-    val root = JsonObject()
+    val baos = ByteArrayOutputStream()
+    val out = ObjectOutputStream(baos)
+    out.writeObject(snapshot.histogram)
+    val compresser = Deflater()
+    compresser.setInput(baos.toByteArray())
+    compresser.finish()
 
-    root.put("duration", snapshot.duration)
-    root.put("messages", snapshot.numMessages)
-    val latencies = JsonObject()
-    latencies.put("min", snapshot.minLatency)
-    latencies.put("max", snapshot.maxLatency)
-    latencies.put("sum", snapshot.totalLatency)
-    root.put("latencies", latencies)
-
-    val buckets = JsonArray()
-    for (bucket in snapshot.buckets) {
-        val jsonBucket = JsonObject()
-        jsonBucket.put("totalLatency", bucket.totalLatency())
-        jsonBucket.put("count", bucket.count())
-        jsonBucket.put("start", bucket.range.start)
-        jsonBucket.put("end", bucket.range.endInclusive)
-        buckets.add(jsonBucket)
-    }
-    root.put("buckets", buckets)
-    buffer.appendString(root.encode())
+    val output = ByteArray(1024 * 1024)
+    val compressedLen = compresser.deflate(output)
+    buffer.appendBytes(output, 0, compressedLen)
 }
 
 fun deserializeMetricSnapshot(input: Buffer): MetricSnapshot {
-    val root = input.toJsonObject()
-    val duration = root.getLong("duration")
-    val numMessages = root.getLong("messages")
-    val latencies = root.getJsonObject("latencies")
-    val sum = latencies.getLong("sum")
-    val min = latencies.getLong("min")
-    val max = latencies.getLong("max")
+    val decompresser = Inflater()
+    decompresser.setInput(input.bytes)
+    decompresser.finished()
 
-    val jsonBuckets = root.getJsonArray("buckets")
-    val buckets = jsonBuckets.map { obj ->
-        val node = obj as JsonObject
-        val total = node.getLong("totalLatency")
-        val count = node.getLong("count")
-        val start = node.getLong("start")
-        val end = node.getLong("end")
-        val bucket = Bucket(start.rangeTo(end))
-        bucket.increment(total, count)
-        bucket
-    }
-    return MetricSnapshot(numMessages, duration, sum, buckets, min, max)
+    val output = ByteArray(1024 * 1024)
+    val decompressedLen = decompresser.inflate(output)
+
+    val bis = ByteArrayInputStream(output, 0, decompressedLen)
+    val input = ObjectInputStream(bis)
+    val histogram = input.readObject() as AbstractHistogram
+    return MetricSnapshot(histogram)
 }
 
 fun printSnapshotScriptable(clients: Int, metricSnapshot: MetricSnapshot) {
@@ -125,10 +101,14 @@ fun printSnapshotScriptable(clients: Int, metricSnapshot: MetricSnapshot) {
     sb.append(clients).append(",")
     sb.append(java.lang.String.format("%.2f", metricSnapshot.throughput())).append(",")
     sb.append(metricSnapshot.averageLatency()).append(",")
-    sb.append(metricSnapshot.minLatency).append(",")
-    sb.append(metricSnapshot.maxLatency).append(",")
+    sb.append(metricSnapshot.minLatency()).append(",")
+    sb.append(metricSnapshot.maxLatency()).append(",")
     sb.append(metricSnapshot.percentile(0.5)).append(",")
-    sb.append(metricSnapshot.percentile(0.95))
+    sb.append(metricSnapshot.percentile(0.99))
+    sb.append(metricSnapshot.percentile(0.999))
+    sb.append(metricSnapshot.percentile(0.9999))
+    sb.append(metricSnapshot.percentile(0.99999))
+    sb.append(metricSnapshot.percentile(0.999999))
     println(sb.toString())
 }
 
@@ -136,16 +116,21 @@ fun printSnapshotPretty(clients: Int, metricSnapshot: MetricSnapshot) {
     val sb = StringBuilder()
     sb.appendln("Result:")
     sb.appendln("Clients:\t\t${clients}")
-    sb.appendln("Duration:\t\t${java.lang.String.format("%.2f", metricSnapshot.duration / 1000.toDouble())} s")
-    sb.appendln("Messages:\t\t${metricSnapshot.numMessages}")
+    sb.appendln("Duration:\t\t${java.lang.String.format("%.2f", metricSnapshot.duration() / 1000.toDouble())} s")
+    sb.appendln("Messages:\t\t${metricSnapshot.numMessages()}")
     sb.appendln("Throughput:\t\t${java.lang.String.format("%.2f", metricSnapshot.throughput())} msgs/s")
-    sb.appendln("Latency avg:\t\t${metricSnapshot.averageLatency()} us")
-    sb.appendln("Latency min:\t\t${metricSnapshot.minLatency} us")
-    sb.appendln("Latency max:\t\t${metricSnapshot.maxLatency} us")
-    sb.appendln("Latency 50p:\t\t${metricSnapshot.percentile(0.5)} us")
-    sb.appendln("Latency 75p:\t\t${metricSnapshot.percentile(0.75)} us")
-    sb.appendln("Latency 90p:\t\t${metricSnapshot.percentile(0.9)} us")
-    sb.appendln("Latency 95p:\t\t${metricSnapshot.percentile(0.95)} us")
+    sb.appendln("Latency avg:\t\t${metricSnapshot.averageLatency()} ms")
+    sb.appendln("Latency min:\t\t${metricSnapshot.minLatency()} ms")
+    sb.appendln("Latency max:\t\t${metricSnapshot.maxLatency()} ms")
+    sb.appendln("Latency 50p:\t\t${metricSnapshot.percentile(0.5)} ms")
+    sb.appendln("Latency 90p:\t\t${metricSnapshot.percentile(0.9)} ms")
+    sb.appendln("Latency 95p:\t\t${metricSnapshot.percentile(0.95)} ms")
+    sb.appendln("Latency 99p:\t\t${metricSnapshot.percentile(0.99)} ms")
+    sb.appendln("Latency 99.9p:\t\t${metricSnapshot.percentile(0.999)} ms")
+    sb.appendln("Latency 99.99p:\t\t${metricSnapshot.percentile(0.9999)} ms")
+    sb.appendln("Latency 99.999p:\t${metricSnapshot.percentile(0.99999)} ms")
+    sb.appendln("Latency 99.9999p:\t${metricSnapshot.percentile(0.999999)} ms")
+    sb.appendln("Latency 99.99999p:\t${metricSnapshot.percentile(0.9999999)} ms")
     println(sb.toString())
 }
 

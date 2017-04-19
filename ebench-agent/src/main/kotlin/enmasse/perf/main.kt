@@ -73,13 +73,9 @@ fun main(args: Array<String>) {
                 hostIt = hostnames.iterator()
             }
             var hostname = hostIt.next()
-            var rateController:RateController = MaxRateController()
+            var rateController: RateController = MaxRateController()
             if (sendRate != 0L) {
-                val scheduler = Executors.newScheduledThreadPool(1)
-                rateController = PidRateController(1.0, 0.01, sendRate)
-                scheduler.scheduleAtFixedRate({
-                    rateController.updateState()
-                }, 0, 1, TimeUnit.SECONDS);
+                rateController = FixedRateController(sendRate)
             }
             Sender(senderId, hostname, address, isTopic, msgSize, duration, presettled, rateController, connectionMonitor)
         }
@@ -93,7 +89,7 @@ fun main(args: Array<String>) {
         }
         val clientHandles = senderHandles.plus(receiverHandlers)
 
-        val metricHandles = if (senderHandles.size > 0) senderHandles else receiverHandlers
+        val metricHandles = if (receiverHandlers.size > 0) receiverHandlers else senderHandles
         val collector =
                 if (format.equals("none")) RemoteCollector(metricHandles)
                 else if (format.equals("script")) TimedCollector(metricHandles, printInterval, ::printSnapshotScriptable)

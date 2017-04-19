@@ -16,6 +16,7 @@
 
 package enmasse.perf
 
+import org.apache.qpid.proton.Proton
 import org.apache.qpid.proton.amqp.Symbol
 import org.apache.qpid.proton.amqp.UnsignedInteger
 import org.apache.qpid.proton.amqp.messaging.Accepted
@@ -23,6 +24,7 @@ import org.apache.qpid.proton.amqp.messaging.TerminusDurability
 import org.apache.qpid.proton.engine.BaseHandler
 import org.apache.qpid.proton.engine.Event
 import org.apache.qpid.proton.engine.Receiver
+import org.apache.qpid.proton.message.Message
 import org.apache.qpid.proton.reactor.FlowController
 import org.apache.qpid.proton.reactor.Handshaker
 import java.util.concurrent.ConcurrentHashMap
@@ -34,7 +36,7 @@ import java.util.concurrent.atomic.AtomicLong
 class Receiver(val clientId: String, hostname: String, val address: String, val isTopic: Boolean, msgSize: Int, duration: Int, connectionMonitor: ConnectionMonitor):
         Client(hostname, duration, connectionMonitor) {
 
-    val buffer = ByteArray(msgSize)
+    val buffer = ByteArray(msgSize + 1024)
 
     init {
         add(Handshaker())
@@ -89,10 +91,14 @@ class Receiver(val clientId: String, hostname: String, val address: String, val 
             val size = delivery.pending()
             val read = recv.recv(buffer, 0, buffer.size)
 
+            val message = Proton.message()
+            message.decode(buffer, 0, read)
+
+            val startTime = message.applicationProperties.value.get("startTime") as Long
             recv.advance()
             delivery.disposition(Accepted())
             delivery.settle()
-            metricRecorder.record()
+            metricRecorder.record(System.nanoTime() - startTime)
         }
     }
 }

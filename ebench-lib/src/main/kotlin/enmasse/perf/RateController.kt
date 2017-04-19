@@ -1,9 +1,8 @@
 package enmasse.perf
 
-import java.nio.channels.SelectableChannel
+import java.nio.channels.Pipe
 
 interface RateController {
-    fun hasSent()
-    fun updateState()
-    fun channel(): SelectableChannel?
+    fun channel(): Pipe.SourceChannel?
+
 }

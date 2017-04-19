@@ -38,7 +38,7 @@ class RemoteCollector(val clients: List<Client>): MetricCollector {
             val snapshot = collectResult(clients)
             val response = request.response()
             printSnapshotPretty(clients.size, snapshot)
-            response.headers().add("Content-Type", "application/json")
+            response.headers().add("Content-Type", "application/octet-stream")
             val buffer = Buffer.buffer()
             serializeMetricSnapshot(buffer, snapshot)
             response.end(buffer)

@@ -6,5 +6,6 @@ dependencies {
     compile "io.vertx:vertx-core:${vertx_version}"
     compile "org.apache.commons:commons-math3:${commons_math_version}"
     compile "org.apache.qpid:proton-j:${proton_version}"
+    compile "org.hdrhistogram:HdrHistogram:${hdrHistogramVersion}"
     testCompile 'junit:junit:4.12'
 }

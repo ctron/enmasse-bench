@@ -20,12 +20,14 @@ import org.apache.qpid.proton.Proton
 import org.apache.qpid.proton.amqp.Binary
 import org.apache.qpid.proton.amqp.Symbol
 import org.apache.qpid.proton.amqp.messaging.AmqpValue
+import org.apache.qpid.proton.amqp.messaging.ApplicationProperties
 import org.apache.qpid.proton.engine.Event
 import org.apache.qpid.proton.engine.Sender
 import org.apache.qpid.proton.reactor.FlowController
 import org.apache.qpid.proton.reactor.Handshaker
 import java.nio.ByteBuffer
 import java.nio.channels.Pipe
+import java.util.*
 
 /**
  * @author lulf
@@ -34,7 +36,7 @@ class Sender(val clientId: String,
              hostname: String,
              val address: String,
              val isTopic: Boolean,
-             msgSize: Int,
+             val msgSize: Int,
              duration: Int,
              presettled: Boolean,
              val rateController: RateController,
@@ -46,16 +48,18 @@ class Sender(val clientId: String,
     private var nextTag = 0
     private val msgBuffer: ByteArray = ByteArray(msgSize + 1024)
     private var msgLen = 0
-    private var localCredits = 0L;
     private var sender:org.apache.qpid.proton.engine.Sender? = null
     @Volatile private var aborted = true
 
     init {
         add(Handshaker())
         add(FlowController())
+    }
 
+    fun encodeMessage(startTime: Long) {
         val msg = Proton.message()
         msg.body = AmqpValue(Binary(1.rangeTo(msgSize).map { a -> a.toByte() }.toByteArray()))
+        msg.applicationProperties = ApplicationProperties(Collections.singletonMap("startTime", startTime))
         msgLen = msg.encode(msgBuffer, 0, msgBuffer.size)
     }
 
@@ -113,35 +117,39 @@ class Sender(val clientId: String,
 
     override fun onSelectableReadable(e: Event) {
         val selectable = e.selectable
-        val channel:Pipe.SourceChannel = selectable.channel as Pipe.SourceChannel
+        val channel: Pipe.SourceChannel = selectable.channel as Pipe.SourceChannel
+        sendNext(channel)
+    }
 
-        val amount = channel.read(buffer)
-        buffer.flip()
-        localCredits = buffer.long
-        buffer.clear()
-        sendData(sender!!)
+    fun sendNext(channel: Pipe.SourceChannel) {
+        val snd = sender!!
+        if (snd.credit > 0) {
+            channel.read(buffer)
+            buffer.flip()
+            val startTime = buffer.long
+            buffer.clear()
+            sendData(snd, startTime)
+        }
     }
 
     override fun onLinkFlow(e: Event) {
         val snd = e.link as org.apache.qpid.proton.engine.Sender
-        sendData(snd)
+        if (snd.credit > 0 && rateController.channel() == null) {
+            sendData(snd, System.nanoTime())
+        }
     }
 
     override fun onTransportError(e: Event) {
         println("Transport error: ${e.transport.condition.description}")
     }
 
-    fun sendData(snd: Sender) {
-        if (snd.credit > 0 && (rateController.channel() == null || localCredits > 0)) {
-            val tag: ByteArray = java.lang.String.valueOf(nextTag++).toByteArray()
-            val dlv = snd.delivery(tag)
-            deliveryTracker.onSend(dlv)
-            snd.send(msgBuffer, 0, msgLen)
-            deliveryTracker.onSent(dlv)
-            snd.advance()
-            rateController.hasSent()
-            localCredits--
-        }
+    fun sendData(snd: Sender, startTime: Long) {
+        val tag: ByteArray = java.lang.String.valueOf(nextTag++).toByteArray()
+        val dlv = snd.delivery(tag)
+        encodeMessage(startTime)
+        deliveryTracker.onSend(dlv, startTime)
+        snd.send(msgBuffer, 0, msgLen)
+        snd.advance()
     }
 }
 

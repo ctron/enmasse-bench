@@ -23,7 +23,7 @@ import org.apache.qpid.proton.engine.BaseHandler
  */
 abstract class Client(val hostname:String, val duration: Int, val connectionMonitor: ConnectionMonitor): Runnable, BaseHandler()
 {
-    val metricRecorder = MetricRecorder(50, 2000)
+    val metricRecorder = MetricRecorder()
     @Volatile var runner = ClientRunner(getHost(hostname), getPort(hostname), this, duration)
 
     private fun getHost(hostname: String): String {
