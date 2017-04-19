@@ -103,6 +103,7 @@ class Sender(val clientId: String,
             val selectable = e.reactor.selectable()
             setHandler(selectable, this)
             e.reactor.update(selectable)
+            rateController.start()
         }
     }
 

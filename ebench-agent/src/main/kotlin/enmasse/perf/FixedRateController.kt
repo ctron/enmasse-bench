@@ -2,24 +2,40 @@ package enmasse.perf
 
 import java.nio.ByteBuffer
 import java.nio.channels.Pipe
-import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-class FixedRateController(sendRate: Long) : RateController, Runnable {
+class FixedRateController(val sendRate: Long) : RateController, Runnable {
     private val pipe = Pipe.open()
     private val sink = pipe.sink()
     private val source = pipe.source()
-    private val scheduler = Executors.newScheduledThreadPool(1)
+    private @Volatile var running = true
+    private val thread = Thread(this)
 
-    init {
-        val sendRateNanos = sendRate.toDouble() / TimeUnit.SECONDS.toNanos(1)
-        scheduler.scheduleAtFixedRate(this, 0, (1 / sendRateNanos).toLong(), TimeUnit.NANOSECONDS)
+    override fun start() {
+        thread.start()
     }
 
     override fun run() {
+        val sendRateNanos = sendRate.toDouble() / TimeUnit.SECONDS.toNanos(1)
+        val waitTimeNanos = (1.0 / sendRateNanos).toLong()
+        println("Waiting ${waitTimeNanos} ns between requests")
+        var startTime = System.nanoTime()
+        while (running) {
+            startTime += waitTimeNanos
+            spinWaitUntil(startTime)
+            notify(startTime)
+        }
+    }
+
+    private fun spinWaitUntil(deadline: Long) {
+        while (deadline > System.nanoTime()) {
+        }
+    }
+
+    private fun notify(startTime: Long) {
         val buffer = ByteBuffer.allocate(8)
         buffer.clear()
-        buffer.putLong(System.nanoTime())
+        buffer.putLong(startTime)
         buffer.flip()
 
         sink.write(buffer)
@@ -30,6 +46,7 @@ class FixedRateController(sendRate: Long) : RateController, Runnable {
     }
 
     override fun shutdown() {
-        scheduler.shutdown()
+        running = false;
+        thread.join()
     }
 }
