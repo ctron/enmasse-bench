@@ -50,6 +50,10 @@ class Receiver(val clientId: String, hostname: String, val address: String, val 
         conn.open()
     }
 
+    override fun stop() {
+        runner.stop(true)
+    }
+
     override fun onConnectionRemoteOpen(e: Event) {
         println("Receiver connected to router ${e.connection.remoteContainer}")
         if (!connectionMonitor.registerConnection(clientId, e.connection.remoteContainer)) {

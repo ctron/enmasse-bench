@@ -50,6 +50,8 @@ abstract class Client(val hostname:String, val duration: Int, val connectionMoni
         runner.stop(false)
     }
 
+    abstract fun stop()
+
     private fun waitForSeparateConnections() {
         while (true) {
             if (connectionMonitor.shouldRestart()) {

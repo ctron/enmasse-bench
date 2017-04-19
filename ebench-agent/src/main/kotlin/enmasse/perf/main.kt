@@ -151,5 +151,6 @@ fun runBenchmark(clients: List<Client>, duration: Int, metricCollector: MetricCo
     clients.forEach{c -> executor.execute(c)}
     metricCollector.start()
     executor.shutdown()
-    executor.awaitTermination(duration + 10L, TimeUnit.SECONDS)
+    executor.awaitTermination(duration + 5L, TimeUnit.SECONDS);
+    clients.forEach(Client::stop)
 }

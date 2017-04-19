@@ -29,4 +29,7 @@ class FixedRateController(sendRate: Long) : RateController, Runnable {
         return source
     }
 
+    override fun shutdown() {
+        scheduler.shutdown()
+    }
 }

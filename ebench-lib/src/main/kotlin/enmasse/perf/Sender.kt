@@ -74,6 +74,11 @@ class Sender(val clientId: String,
         return aborted
     }
 
+    override fun stop() {
+        rateController.shutdown()
+        runner.stop(true)
+    }
+
     override fun onConnectionRemoteOpen(e: Event) {
         println("Sender connected to router ${e.connection.remoteContainer}")
         if (!connectionMonitor.registerConnection(clientId, e.connection.remoteContainer)) {
