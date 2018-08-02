@@ -106,14 +106,10 @@ fun main(args: Array<String>) {
 }
 
 fun  parseHostNames(hostnames: String?): List<String> {
-    if (hostnames == null) {
+    if (hostnames == null || hostnames.isEmpty()) {
         throw IllegalArgumentException("Hostnames must be specified")
     }
-    if (hostnames.contains(",")) {
-        return hostnames.split(",")
-    } else {
-        return listOf(hostnames)
-    }
+    return hostnames.split("\\s*[,\\n]+\\s*")
 }
 
 private fun  createConnectionMonitor(splitClients: Boolean, clientIds: List<String>): ConnectionMonitor {
