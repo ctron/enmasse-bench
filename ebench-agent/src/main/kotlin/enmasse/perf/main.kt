@@ -63,6 +63,7 @@ fun main(args: Array<String>) {
         val isTopic = cmd.hasOption("t")
 
         val clientId = Inet4Address.getLocalHost().hostName
+        println("Client ID: ${clientId}")
 
         val senderIds:List<String> = 1.rangeTo(senders).map { i -> "${clientId}-sender-${i}" }
         val receiverIds:List<String> = 1.rangeTo(receivers).map { i -> "${clientId}-receiver-${i}" }
