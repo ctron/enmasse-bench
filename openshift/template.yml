@@ -1,0 +1,286 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: enmasse-bench
+  annotations:
+    description: "EnMasse Benchmark"
+    tags: "messaging"
+
+# Parameters
+
+parameters:
+- name:         GIT_REPOSITORY
+  description:     URL of the Git repository
+  value:           https://github.com/enmasseproject/enmasse-bench
+  required:        true
+- name:         GIT_BRANCH
+  description:     GitHub branch
+  value:           master
+  required:        true
+- name:         ADDRESS
+  description:     The address to test with
+  required:        true
+  value:           event/DEFAULT_TENANT
+- name:         HOSTS
+  description:     The hosts to test with. This has to be in the format of 'host1:port1[,host2:port2[…]]]'
+  value:           hono-adapter-http-vertx-hono.wonderful.iot-playground.org:30671
+  required:        true
+- name:         SENDERS_PER_INSTANCE
+  description:     The default number of senders per sender instance
+  value:           "1"
+  required:        true
+- name:         RECEIVERS_PER_INSTANCE
+  description:     The default number of receivers per receiver instance
+  value:           "1"
+  required:        true
+- name:         MESSAGE_SIZE
+  description:     The number of bytes to send
+  value:           "64"
+  required:        true
+- name:         ENABLE_UNSECURE_TLS
+  description:     Set to 'true' to enable TLS in an unsecure mode. If this is set to anything else, TLS will be disabled.
+
+objects:
+
+# Configuration
+
+- kind: ConfigMap
+  apiVersion: v1
+  metadata:
+    name: enmasse-bench-configuration
+  data:
+    test.address: ${ADDRESS}
+    test.duration: "31536000" # one year, in seconds
+    test.enableUnsecureTls: ${ENABLE_UNSECURE_TLS}
+    test.hosts: ${HOSTS}
+    test.messageSize: ${MESSAGE_SIZE}
+    test.receiver.numberPerInstance: ${RECEIVERS_PER_INSTANCE}
+    test.sender.numberPerInstance: ${SENDERS_PER_INSTANCE}
+
+# Image streams
+
+- kind: ImageStream
+  apiVersion: v1
+  metadata:
+    name: fabric8-s2i-java
+  spec:
+    tags:
+    - from:
+        kind: DockerImage
+        name: fabric8/s2i-java:2.3
+      importPolicy:
+        scheduled: true
+      name: "2.3"
+      referencePolicy:
+        type: Source
+
+- kind: ImageStream
+  apiVersion: v1
+  metadata:
+    name: ebench-agent
+    labels:
+      app: enmasse-bench
+
+- kind: BuildConfig
+  apiVersion: v1
+  metadata:
+    name: ebench-agent-build
+    labels:
+      app: enmasse-bench
+  spec:
+    triggers: 
+      - type: ImageChange
+      - type: ConfigChange
+    source: 
+      type: Git
+      git:
+        uri: ${GIT_REPOSITORY}
+        ref: ${GIT_BRANCH}
+    strategy: 
+      type: source
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: fabric8-s2i-java:2.3
+        env:
+        - name: ARTIFACT_DIR
+          value: ebench-agent/build/libs
+    output:
+      to:
+        kind: ImageStreamTag
+        name: ebench-agent:latest
+
+- kind: DeploymentConfig
+  apiVersion: v1
+  metadata:
+    name: ebench-agent-sender
+    labels:
+      app: enmasse-bench
+      deploymentconfig: ebench-agent-sender
+  spec:
+    replicas: 0
+    selector:
+      app: enmasse-bench
+      deploymentconfig: ebench-agent-sender
+    strategy:
+      type: Rolling
+    triggers:
+      - type: ConfigChange
+      - type: ImageChange
+        imageChangeParams:
+          automatic: true
+          containerNames:
+            - agent
+          from:
+            kind: ImageStreamTag
+            name: ebench-agent:latest
+    template:
+      metadata:
+        labels:
+          app: enmasse-bench
+          deploymentconfig: ebench-agent-sender
+      spec:
+        containers:
+        - name: agent
+          image: ebench-agent
+          imagePullPolicy: Always
+          command:
+          - "/usr/local/s2i/run"
+          - "--senders"
+          - "$(TEST_SENDERS_PER_INSTANCE)"
+          - "--receivers"
+          - "0"
+          - "--address"
+          - "$(TEST_ADDRESS)"
+          - "--hosts"
+          - "$(TEST_HOSTS)"
+          - "--format"
+          - "pretty"
+          - "--interval"
+          - "10"
+          - "--messageSize"
+          - "$(TEST_MESSAGE_SIZE)"
+          - "--duration"
+          - "$(TEST_DURATION)"
+          - "$(SENDER_OPTIONS)"
+          env:
+          - name: TEST_ADDRESS
+            valueFrom:
+              configMapKeyRef:
+                name: enmasse-bench-configuration
+                key: test.address
+          - name: TEST_HOSTS
+            valueFrom:
+              configMapKeyRef:
+                name: enmasse-bench-configuration
+                key: test.hosts
+          - name: TEST_SENDERS_PER_INSTANCE
+            valueFrom:
+              configMapKeyRef:
+                name: enmasse-bench-configuration
+                key: test.sender.numberPerInstance
+          - name: TEST_MESSAGE_SIZE
+            valueFrom:
+              configMapKeyRef:
+                name: enmasse-bench-configuration
+                key: test.messageSize
+          - name: TEST_DURATION
+            valueFrom:
+              configMapKeyRef:
+                name: enmasse-bench-configuration
+                key: test.duration
+          - name: ENABLE_UNSECURE_TLS
+            valueFrom:
+              configMapKeyRef:
+                name: enmasse-bench-configuration
+                key: test.enableUnsecureTls
+          - name: SENDER_OPTIONS
+            value: ""
+
+- kind: DeploymentConfig
+  apiVersion: v1
+  metadata:
+    name: ebench-agent-receiver
+    labels:
+      app: enmasse-bench
+      deploymentconfig: ebench-agent-receiver
+  spec:
+    replicas: 0
+    selector:
+      app: enmasse-bench
+      deploymentconfig: ebench-agent-receiver
+    strategy:
+      type: Recreate
+    triggers:
+      - type: ConfigChange
+      - type: ImageChange
+        imageChangeParams:
+          automatic: true
+          containerNames:
+            - agent
+          from:
+            kind: ImageStreamTag
+            name: ebench-agent:latest
+    template:
+      metadata:
+        labels:
+          app: enmasse-bench
+          deploymentconfig: ebench-agent-receiver
+      spec:
+        containers:
+        - name: agent
+          image: ebench-agent
+          imagePullPolicy: Always
+          command:
+          - "/usr/local/s2i/run"
+          - "--receivers"
+          - "$(TEST_RECEIVERS_PER_INSTANCE)"
+          - "--senders"
+          - "0"
+          - "--address"
+          - "$(TEST_ADDRESS)"
+          - "--hosts"
+          - "$(TEST_HOSTS)"
+          - "--format"
+          - "pretty"
+          - "--interval"
+          - "10"
+          - "--messageSize"
+          - "$(TEST_MESSAGE_SIZE)"
+          - "--duration"
+          - "$(TEST_DURATION)"
+          - "$(RECEIVER_OPTIONS)"
+          env:
+          - name: TEST_ADDRESS
+            valueFrom:
+              configMapKeyRef:
+                name: enmasse-bench-configuration
+                key: test.address
+          - name: TEST_HOSTS
+            valueFrom:
+              configMapKeyRef:
+                name: enmasse-bench-configuration
+                key: test.hosts
+          - name: TEST_RECEIVERS_PER_INSTANCE
+            valueFrom:
+              configMapKeyRef:
+                name: enmasse-bench-configuration
+                key: test.receiver.numberPerInstance
+          - name: TEST_MESSAGE_SIZE
+            valueFrom:
+              configMapKeyRef:
+                name: enmasse-bench-configuration
+                key: test.messageSize
+          - name: TEST_DURATION
+            valueFrom:
+              configMapKeyRef:
+                name: enmasse-bench-configuration
+                key: test.duration
+          - name: ENABLE_UNSECURE_TLS
+            valueFrom:
+              configMapKeyRef:
+                name: enmasse-bench-configuration
+                key: test.enableUnsecureTls
+          - name: RECEIVER_OPTIONS
+            value: ""
+
