@@ -2,6 +2,10 @@
 bin/
 build/
 
+# IntelliJ
+
+out/
+
 # Gradle
 
 /.gradle/
