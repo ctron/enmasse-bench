@@ -39,6 +39,7 @@ class Sender(val clientId: String,
              val msgSize: Int,
              duration: Int,
              presettled: Boolean,
+             val durable: Boolean,
              val rateController: RateController,
              connectionMonitor: ConnectionMonitor):
         Client(hostname, duration, connectionMonitor) {
@@ -60,6 +61,7 @@ class Sender(val clientId: String,
         val msg = Proton.message()
         msg.body = AmqpValue(Binary(1.rangeTo(msgSize).map { a -> a.toByte() }.toByteArray()))
         msg.applicationProperties = ApplicationProperties(Collections.singletonMap("startTime", startTime))
+        msg.isDurable = durable
         msgLen = msg.encode(msgBuffer, 0, msgBuffer.size)
     }
 

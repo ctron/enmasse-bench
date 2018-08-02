@@ -35,6 +35,7 @@ fun main(args: Array<String>) {
     val options = Options()
     options.addOption(createRequiredOption("a", "address", "Address to use for messages"))
     options.addOption(createRequiredOption("d", "duration", "Number of seconds to run test"))
+    options.addOption(createOptionNoArg("u", "durable", "Flag messages as 'durable'"))
     options.addOption(createOption("f", "format", "Output format(pretty, script or none. None means that the agent can be polled using http)"))
     options.addOption(createRequiredOption("h", "hosts", "<host>:<port> of server(s). If multiple servers are specified, senders and receivers will be assigned round robin"))
     options.addOption(createOption("i", "interval", "Interval when reporting statistics in pretty or script modes"))
@@ -60,6 +61,7 @@ fun main(args: Array<String>) {
         val presettled = cmd.hasOption("p")
         val splitClients = cmd.hasOption("c")
         val isTopic = cmd.hasOption("t")
+        val durable = cmd.hasOption("u");
 
         val clientId = Inet4Address.getLocalHost().hostName
 
@@ -77,7 +79,7 @@ fun main(args: Array<String>) {
             if (sendRate != 0L) {
                 rateController = FixedRateController(sendRate)
             }
-            Sender(senderId, hostname, address, isTopic, msgSize, duration, presettled, rateController, connectionMonitor)
+            Sender(senderId, hostname, address, isTopic, msgSize, duration, presettled, durable, rateController, connectionMonitor)
         }
 
         val receiverHandlers = receiverIds.map { receiverId ->
