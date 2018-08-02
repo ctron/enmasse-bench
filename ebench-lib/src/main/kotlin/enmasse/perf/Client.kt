@@ -17,6 +17,9 @@
 package enmasse.perf
 
 import org.apache.qpid.proton.engine.BaseHandler
+import org.apache.qpid.proton.engine.Event
+import org.apache.qpid.proton.engine.SslDomain
+import org.apache.qpid.proton.engine.Transport
 
 /**
  * @author lulf
@@ -73,6 +76,24 @@ abstract class Client(val hostname:String, val duration: Int, val connectionMoni
 
     }
 
+    override fun onConnectionBound(e: Event) {
+
+        val unsecure = java.lang.Boolean.parseBoolean (System.getenv("ENABLE_UNSECURE_TLS"))
+        if (unsecure) {
+
+            println("Enabling unsecure TLS")
+
+            val transport = e.transport
+
+            val domain = SslDomain.Factory.create()
+            domain.init(SslDomain.Mode.CLIENT)
+
+            domain.peerAuthentication = SslDomain.VerifyMode.ANONYMOUS_PEER
+            transport.ssl(domain)
+        }
+
+        super.onConnectionBound(e)
+    }
 
 }
 
