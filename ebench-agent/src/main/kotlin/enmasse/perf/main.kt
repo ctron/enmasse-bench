@@ -18,6 +18,7 @@ package enmasse.perf
 
 import org.apache.commons.cli.*
 import java.net.Inet4Address
+import java.util.Arrays
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -98,7 +99,7 @@ fun main(args: Array<String>) {
         Runtime.getRuntime().addShutdownHook(Thread(Runnable { collector.stop() }))
         runBenchmark(clientHandles, duration, collector)
     } catch (e: ParseException) {
-        println("Unable to parse arguments: ${args}")
+        println("Unable to parse arguments: " + Arrays.toString(args))
         val formatter = HelpFormatter()
         formatter.printHelp("ebench", options)
         System.exit(1)
