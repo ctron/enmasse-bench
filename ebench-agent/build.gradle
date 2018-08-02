@@ -3,7 +3,7 @@ apply plugin: 'kotlin'
 dependencies {
     compile project(":ebench-lib")
     compile 'org.slf4j:slf4j-api:1.7.13'
-	compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     compile "commons-cli:commons-cli:${commons_cli_version}"
     compile "io.vertx:vertx-core:${vertx_version}"
 }
@@ -11,3 +11,11 @@ dependencies {
 apply plugin: 'application'
 mainClassName = 'enmasse.perf.MainKt'
 applicationDefaultJvmArgs = ["-Dvertx.disableFileCaching=true", "-Dvertx.disableFileCPResolving=true"]
+
+jar {
+    manifest {
+        attributes 'Main-Class': mainClassName
+    }
+
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+}
