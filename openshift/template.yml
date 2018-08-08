@@ -20,10 +20,8 @@ parameters:
 - name:         ADDRESS
   description:     The address to test with
   required:        true
-  value:           event/DEFAULT_TENANT
 - name:         HOSTS
   description:     The hosts to test with. This has to be in the format of 'host1:port1[,host2:port2[…]]]'
-  value:           hono-adapter-http-vertx-hono.wonderful.iot-playground.org:30671
   required:        true
 - name:         SENDERS_PER_INSTANCE
   description:     The default number of senders per sender instance
